@@ -175,18 +175,15 @@ const LIVROS = [
  ['EZE','Ezequiel','Ez','at','ezekiel'],['DAN','Daniel','Dn','at','daniel'],['HOS','Oseias','Os','at','hosea'],['JOE','Joel','Jl','at','joel'],['AMO','Amós','Am','at','amos'],
  ['OBA','Obadias','Ob','at','obadiah'],['JON','Jonas','Jn','at','jonah'],['MIC','Miqueias','Mq','at','micah'],['NAH','Naum','Na','at','nahum'],['HAB','Habacuque','Hc','at','habakkuk'],
  ['ZEP','Sofonias','Sf','at','zephaniah'],['HAG','Ageu','Ag','at','haggai'],['ZEC','Zacarias','Zc','at','zechariah'],['MAL','Malaquias','Ml','at','malachi'],
- ['TOB','Tobias','Tb','dc'],['JDT','Judite','Jt','dc'],['ESG','Ester (texto grego completo)','Et gr','dc'],['WIS','Sabedoria','Sb','dc'],['SIR','Eclesiástico (Sirácida)','Eclo','dc'],
- ['BAR','Baruc','Br','dc'],['1MA','1 Macabeus','1Mc','dc'],['2MA','2 Macabeus','2Mc','dc'],['DNG','Daniel (texto grego completo)','Dn gr','dc'],
  ['MAT','Mateus','Mt','nt','matthew'],['MAR','Marcos','Mc','nt','mark'],['LUK','Lucas','Lc','nt','luke'],['JOH','João','Jo','nt','john'],['ACT','Atos','At','nt','acts'],
  ['ROM','Romanos','Rm','nt','romans'],['1CO','1 Coríntios','1Co','nt','1_corinthians'],['2CO','2 Coríntios','2Co','nt','2_corinthians'],['GAL','Gálatas','Gl','nt','galatians'],['EPH','Efésios','Ef','nt','ephesians'],
  ['PHI','Filipenses','Fp','nt','philippians'],['COL','Colossenses','Cl','nt','colossians'],['1TH','1 Tessalonicenses','1Ts','nt','1_thessalonians'],['2TH','2 Tessalonicenses','2Ts','nt','2_thessalonians'],['1TI','1 Timóteo','1Tm','nt','1_timothy'],
  ['2TI','2 Timóteo','2Tm','nt','2_timothy'],['TIT','Tito','Tt','nt','titus'],['PHM','Filemom','Fm','nt','philemon'],['HEB','Hebreus','Hb','nt','hebrews'],['JAM','Tiago','Tg','nt','james'],
  ['1PE','1 Pedro','1Pe','nt','1_peter'],['2PE','2 Pedro','2Pe','nt','2_peter'],['1JO','1 João','1Jo','nt','1_john'],['2JO','2 João','2Jo','nt','2_john'],['3JO','3 João','3Jo','nt','3_john'],
  ['JUD','Judas','Jd','nt','jude'],['REV','Apocalipse','Ap','nt','revelation'],
- ['1ES','1 Esdras','1Esd','or'],['PRM','Oração de Manassés','OrMan','or'],['PSX','Salmo 151','Sl 151','or'],['3MA','3 Macabeus','3Mc','or'],['4ES','2 Esdras (4 Esdras)','2Esd','or'],['4MA','4 Macabeus','4Mc','or'],
 ];
 const LIV = Object.fromEntries(LIVROS.map((l, i) => [l[0], {cod: l[0], nome: l[1], abr: l[2], grupo: l[3], hub: l[4], i}]));
-const GRUPOS = {at: 'Antigo Testamento', dc: 'Livros deuterocanônicos (Bíblia católica)', nt: 'Novo Testamento', or: 'Outros livros antigos (Igreja Ortodoxa)'};
+const GRUPOS = {at: 'Antigo Testamento', nt: 'Novo Testamento'};
 const TRAD = {
   blivre: {sigla: 'BL', nome: 'Bíblia Livre'},
   bpm: {sigla: 'BPM', nome: 'Bíblia Portuguesa Mundial'},
@@ -253,11 +250,6 @@ async function ler(opt = {}) {
   const nCaps = Math.max(...caps.map(c => c.length));
   if (E.cap > nCaps) E.cap = Math.max(nCaps, 1);
   let h = `<div class="cap-tit">${esc(L.nome)} ${E.cap}</div><div class="cap-sub">${trads.map(t => TRAD[t].nome).join(' × ')}</div>`;
-  const faltam = trads.filter((t, i) => !caps[i].length);
-  if (faltam.length) {
-    h += `<div class="aviso">O livro <b>${esc(L.nome)}</b> não faz parte da <b>${TRAD[faltam[0]].nome}</b>. Ela segue a lista de livros das Bíblias evangélicas (66 livros). As Bíblias católicas trazem também os livros deuterocanônicos, e as ortodoxas mais alguns.` +
-      (E.modo !== 'cmp' ? `<br><button class="btn" onclick="E.modo=E.trad='bpm';salvar();ler()">Ler na Bíblia Portuguesa Mundial</button>` : '') + '</div>';
-  }
   if (E.modo === 'cmp') {
     const n = Math.max(...caps.map(c => (c[E.cap - 1] || []).length));
     h += '<div class="texto">';
@@ -294,7 +286,7 @@ function capsDe(liv) {
 const CAPS = {};
 async function contarCaps(t) { const d = await carregar(t); CAPS[t] = Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v.length])); }
 function vizinhos() {
-  const seq = LIVROS.filter(l => capsDe(l[0]) > 0 && (E.modo !== 'cmp' || l[3] !== 'or')).map(l => l[0]);
+  const seq = LIVROS.filter(l => capsDe(l[0]) > 0).map(l => l[0]);
   const i = seq.indexOf(E.livro), n = capsDe(E.livro);
   const ant = E.cap > 1 ? [E.livro, E.cap - 1] : (i > 0 ? [seq[i - 1], capsDe(seq[i - 1])] : null);
   const prox = E.cap < n ? [E.livro, E.cap + 1] : (i >= 0 && i < seq.length - 1 ? [seq[i + 1], 1] : null);
@@ -361,7 +353,7 @@ function salvarNota() { const [k, m] = marca(true); m.nota = $('#notaTx').value.
 async function compararVers() {
   const {liv, cap, ver} = selV;
   const [a, b] = await Promise.all([textoVers('blivre', liv, cap, ver), textoVers('bpm', liv, cap, ver)]);
-  $('#folhaExtra').innerHTML = `<div class="aviso" style="margin:12px 0 0"><b>Bíblia Livre</b><br><span style="font-family:var(--serif)">${a ? fmt(a) : '<i>(livro ou versículo não existe nesta tradução)</i>'}</span><br><br><b>Bíblia Portuguesa Mundial</b><br><span style="font-family:var(--serif)">${b ? fmt(b) : '<i>(versículo não existe nesta tradução)</i>'}</span>` +
+  $('#folhaExtra').innerHTML = `<div class="aviso" style="margin:12px 0 0"><b>Bíblia Livre</b><br><span style="font-family:var(--serif)">${a ? fmt(a) : '<i>(versículo não existe nesta tradução)</i>'}</span><br><br><b>Bíblia Portuguesa Mundial</b><br><span style="font-family:var(--serif)">${b ? fmt(b) : '<i>(versículo não existe nesta tradução)</i>'}</span>` +
     (LIV[liv].hub ? `<br><br><small>Quer ir mais fundo? Toque em <b>🔤 Original</b> para ver as palavras em hebraico/grego.</small>` : '') + '</div>';
 }
 async function textoParaCopiar() { const t = E.modo === 'cmp' ? 'blivre' : E.modo; const tx = (await textoVers(t, selV.liv, selV.cap, selV.ver)).replace(/[\[\]]/g, ''); return `"${tx}" — ${refTxt(selV.liv, selV.cap, selV.ver)} (${TRAD[t].sigla})`; }
@@ -384,10 +376,8 @@ function telaLivros() {
     return;
   }
   const grupo = abaLivros || LIV[E.livro].grupo;
-  let h = '<div class="abas">' + Object.entries(GRUPOS).map(([g, n]) => `<button class="${g === grupo ? 'on' : ''}" onclick="abaLivros='${g}';telaLivros()">${{at: 'Antigo T.', dc: 'Deuterocanônicos', nt: 'Novo T.', or: 'Outros'}[g]}</button>`).join('') + '</div>';
+  let h = '<div class="abas">' + Object.entries(GRUPOS).map(([g, n]) => `<button class="${g === grupo ? 'on' : ''}" onclick="abaLivros='${g}';telaLivros()">${{at: 'Antigo Testamento', nt: 'Novo Testamento'}[g]}</button>`).join('') + '</div>';
   h += `<div class="grupo-tit">${GRUPOS[grupo]}</div>`;
-  if (grupo === 'dc') h += '<div class="info">Estão nas Bíblias católicas, não nas evangélicas nem na Tradução do Novo Mundo. Disponíveis na Bíblia Portuguesa Mundial.</div>';
-  if (grupo === 'or') h += '<div class="info">Usados pelas Igrejas Ortodoxas; não estão nas Bíblias católicas nem evangélicas. Disponíveis na Bíblia Portuguesa Mundial.</div>';
   h += '<div class="lista-livros">';
   LIVROS.filter(l => l[3] === grupo).forEach(l => {
     const n = Math.max((CAPS.blivre || {})[l[0]] || 0, (CAPS.bpm || {})[l[0]] || 0);
@@ -397,8 +387,6 @@ function telaLivros() {
 }
 function escolherCap(c) {
   const liv = livroEscolhido; livroEscolhido = null;
-  // livro que não existe na tradução aberta: abre na que tem
-  if (E.modo === 'blivre' && !(CAPS.blivre || {})[liv]) { E.modo = E.trad = 'bpm'; toast('Aberto na Bíblia Portuguesa Mundial'); }
   abrir(liv, c);
 }
 
@@ -438,7 +426,7 @@ function destacar(tx, rx) {
   while ((m = rx.exec(s))) { out += esc(limpo.slice(i, m.index)) + '<mark>' + esc(limpo.slice(m.index, m.index + m[0].length)) + '</mark>'; i = m.index + m[0].length; if (!m[0].length) rx.lastIndex++; }
   return out + esc(limpo.slice(i));
 }
-function abrirBusca(l, c, v) { if (E.modo !== 'cmp') E.modo = E.trad = (CAPS[E.buscaTrad] || {})[l] ? E.buscaTrad : 'bpm'; abrir(l, c, v); }
+function abrirBusca(l, c, v) { if (E.modo !== 'cmp') E.modo = E.trad = E.buscaTrad; abrir(l, c, v); }
 
 // ---------- meus estudos ----------
 let filtroMeus = 'tudo';
@@ -487,12 +475,15 @@ function telaSobre() {
   <div class="caixa"><p><b>4. Palavras acrescentadas à vista</b> — na Bíblia Livre, as palavras que não existem no original e foram colocadas só para o português fazer sentido aparecem <span style="font-style:italic;color:var(--add)">em itálico cinza</span>. Assim você sabe o que é texto e o que é ajuda do tradutor.</p></div>
   <p>E a regra de ouro, que vale para qualquer Bíblia: <b>leia o capítulo inteiro</b>, não só um versículo solto. O contexto protege contra interpretações forçadas.</p>
 
+  <h2>Os 66 livros</h2>
+  <p>Este app traz só os <b>66 livros</b>: os 39 do Antigo Testamento, que são exatamente os livros da Bíblia hebraica dos judeus, e os 27 do Novo Testamento. As Bíblias católicas têm também os chamados livros <b>deuterocanônicos</b> (Tobias, Judite, Sabedoria, Eclesiástico, Baruc, 1 e 2 Macabeus e acréscimos em Ester e Daniel). Eles ficaram de fora porque não fazem parte da Bíblia hebraica dos judeus; chegaram até nós principalmente pela tradução grega antiga (a Septuaginta).</p>
+
   <h2>As traduções</h2>
   <h3>Bíblia Livre (BL)</h3>
-  <p>Atualização para o português do Brasil da tradução de <b>João Ferreira de Almeida</b> (edição de 1819), a mais antiga e tradicional Bíblia em português, usada há séculos. Traduzida do hebraico e do grego (Texto Massorético e <i>Textus Receptus</i>). Linguagem mais clássica. 66 livros (lista das Bíblias evangélicas). Onde o original traz o nome de Deus (as letras hebraicas YHWH), ela usa “SENHOR” e, em alguns lugares, “EU-SOU”.</p>
+  <p>Atualização para o português do Brasil da tradução de <b>João Ferreira de Almeida</b> (edição de 1819), a mais antiga e tradicional Bíblia em português, usada há séculos. Traduzida do hebraico e do grego (Texto Massorético e <i>Textus Receptus</i>). Linguagem mais clássica. Onde o original traz o nome de Deus (as letras hebraicas YHWH), ela usa “SENHOR” e, em alguns lugares, “EU-SOU”.</p>
   <p><small>Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles, versão de fevereiro de 2018. Licença Creative Commons Atribuição 4.0 Brasil. Texto obtido em eBible.org e reproduzido sem alterações.</small></p>
   <h3>Bíblia Portuguesa Mundial (BPM)</h3>
-  <p>Tradução moderna e de linguagem mais simples, baseada na <i>World English Bible</i>, que por sua vez foi feita a partir do hebraico e do grego. Inclui os <b>livros deuterocanônicos</b> que você encontra na Bíblia católica (Tobias, Judite, Sabedoria, Eclesiástico, Baruc, 1 e 2 Macabeus e as partes gregas de Ester e Daniel), e também os livros usados pelas Igrejas Ortodoxas, em seção separada. Usa “SENHOR” para o nome de Deus. Ainda está em revisão pelos tradutores.</p>
+  <p>Tradução moderna e de linguagem mais simples, baseada na <i>World English Bible</i>, que por sua vez foi feita a partir do hebraico e do grego. Usa “SENHOR” para o nome de Deus. Ainda está em revisão pelos tradutores.</p>
   <p><small>Bíblia Portuguesa Mundial — domínio público. Texto obtido em eBible.org (versão de 08/10/2026) e reproduzido sem alterações.</small></p>
 
   <h2>Sobre o nome de Deus</h2>
