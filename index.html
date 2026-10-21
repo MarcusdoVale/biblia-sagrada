@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Bíblia Sagrada</title>
+<meta name="description" content="Bíblia para ler no celular, sem internet, com duas traduções livres para comparar.">
+<meta name="theme-color" content="#5b3a1e">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Bíblia">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#fbf8f3;--bg2:#f3ede3;--card:#ffffff;--tx:#2b2420;--tx2:#6f645b;--linha:#e4dacb;
+  --pri:#7a4a22;--pri2:#5b3a1e;--priTx:#fff;--add:#8a7f74;
+  --h1:#fff1a8;--h2:#c9f0c4;--h3:#cfe3ff;--h4:#ffd4dc;
+  --sombra:0 6px 24px rgba(60,40,20,.14);
+  --ui:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --serif:'Literata',Georgia,'Times New Roman',serif;
+}
+:root[data-theme="sepia"]{--bg:#f4ecd8;--bg2:#ebe0c6;--card:#fbf5e6;--tx:#3a2e1f;--tx2:#7a6a52;--linha:#dccdab}
+:root[data-theme="dark"]{
+  --bg:#17130f;--bg2:#221c16;--card:#211b15;--tx:#ece3d6;--tx2:#a99a88;--linha:#3a3027;
+  --pri:#d39b62;--pri2:#e7b47f;--priTx:#1a130c;--add:#8f8274;
+  --h1:#5b5020;--h2:#284a2a;--h3:#22395a;--h4:#5a2a35;--sombra:0 6px 24px rgba(0,0,0,.5)
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme]){
+  --bg:#17130f;--bg2:#221c16;--card:#211b15;--tx:#ece3d6;--tx2:#a99a88;--linha:#3a3027;
+  --pri:#d39b62;--pri2:#e7b47f;--priTx:#1a130c;--add:#8f8274;
+  --h1:#5b5020;--h2:#284a2a;--h3:#22395a;--h4:#5a2a35;--sombra:0 6px 24px rgba(0,0,0,.5)
+}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--ui)}
+body{min-height:100vh;padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+input,textarea,select{font:inherit;color:var(--tx);background:var(--card);border:1px solid var(--linha);border-radius:10px;padding:10px 12px;width:100%}
+.topo{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--linha);padding:calc(8px + env(safe-area-inset-top)) 12px 8px;display:flex;gap:8px;align-items:center}
+.ref{flex:1;min-width:0;text-align:left;font-weight:600;font-size:17px;padding:8px 10px;border-radius:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ref small{font-weight:400;color:var(--tx2);font-size:13px;margin-left:4px}
+.ref:active,.ib:active{background:var(--bg2)}
+.trad{display:flex;background:var(--bg2);border-radius:10px;padding:3px}
+.trad button{padding:6px 10px;border-radius:8px;font-size:13px;font-weight:600;color:var(--tx2)}
+.trad button.on{background:var(--card);color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ib{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;font-size:18px}
+main{max-width:720px;margin:0 auto;padding:0 16px}
+.tela{display:none}.tela.on{display:block}
+/* leitura */
+.cap-tit{font-family:var(--serif);font-size:28px;font-weight:600;margin:22px 0 4px;text-align:center}
+.cap-sub{text-align:center;color:var(--tx2);font-size:13px;margin-bottom:18px}
+.texto{font-family:var(--serif);font-size:var(--fs,19px);line-height:1.75}
+.v{border-radius:5px;padding:1px 2px;transition:background .15s}
+.v sup{font-family:var(--ui);font-size:.58em;font-weight:600;color:var(--pri);margin-right:3px;vertical-align:.45em}
+.v .add{font-style:italic;color:var(--add)}
+.v.sel{outline:2px dashed var(--pri);outline-offset:1px}
+.v.h1{background:var(--h1)}.v.h2{background:var(--h2)}.v.h3{background:var(--h3)}.v.h4{background:var(--h4)}
+.v .nota-ic{font-size:.7em;margin-left:2px}
+.cmp{display:block;margin:0 0 14px;padding:10px 12px;border-left:3px solid var(--linha);border-radius:0 8px 8px 0}
+.cmp .lin{display:block;margin-top:2px}
+.cmp .lin b{font-family:var(--ui);font-size:11px;letter-spacing:.04em;color:var(--tx2);font-weight:600;margin-right:6px}
+.paragrafo .v{display:inline}
+.aviso{background:var(--bg2);border-radius:12px;padding:14px 16px;margin:18px 0;font-size:15px;line-height:1.5}
+.aviso button{margin-top:10px}
+.nav-cap{display:flex;gap:10px;margin:28px 0 20px}
+.nav-cap button{flex:1;padding:14px;border-radius:12px;background:var(--bg2);font-weight:600;color:var(--pri)}
+.nav-cap button:disabled{opacity:.35}
+.btn{padding:11px 16px;border-radius:10px;background:var(--pri);color:var(--priTx);font-weight:600}
+.btn2{padding:11px 16px;border-radius:10px;background:var(--bg2);color:var(--pri);font-weight:600}
+/* livros */
+.abas{display:flex;gap:6px;overflow-x:auto;padding:14px 0 10px;scrollbar-width:none}
+.abas button{white-space:nowrap;padding:8px 14px;border-radius:999px;background:var(--bg2);font-size:14px;font-weight:500;color:var(--tx2)}
+.abas button.on{background:var(--pri);color:var(--priTx)}
+.grupo-tit{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--tx2);margin:16px 2px 8px;font-weight:600}
+.lista-livros{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:6px}
+.lista-livros button{text-align:left;padding:12px;border-radius:10px;background:var(--card);border:1px solid var(--linha);font-size:15px}
+.lista-livros button small{display:block;color:var(--tx2);font-size:12px;margin-top:2px}
+.lista-livros button.atual{border-color:var(--pri);color:var(--pri);font-weight:600}
+.caps{display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px;margin:10px 0 24px}
+.caps button{aspect-ratio:1;border-radius:10px;background:var(--card);border:1px solid var(--linha);font-weight:500}
+.caps button.atual{background:var(--pri);color:var(--priTx);border-color:var(--pri)}
+.voltar{display:inline-flex;gap:6px;align-items:center;color:var(--pri);font-weight:600;padding:14px 0 4px}
+/* busca e listas */
+.busca-bar{display:flex;gap:8px;margin:16px 0 8px}
+.res{padding:12px 2px;border-bottom:1px solid var(--linha)}
+.res .r{font-size:13px;font-weight:600;color:var(--pri);margin-bottom:3px}
+.res .t{font-family:var(--serif);font-size:16px;line-height:1.55}
+.res mark{background:var(--h1);color:inherit;border-radius:3px}
+.res .n{font-size:14px;color:var(--tx2);margin-top:6px;white-space:pre-wrap;background:var(--bg2);padding:8px 10px;border-radius:8px}
+.vazio{color:var(--tx2);text-align:center;padding:40px 10px;line-height:1.6}
+.info{color:var(--tx2);font-size:13px;margin:6px 2px}
+/* sobre */
+.doc{line-height:1.65;font-size:16px;padding-bottom:30px}
+.doc h2{font-family:var(--serif);font-size:24px;margin:26px 0 8px}
+.doc h3{font-size:16px;margin:22px 0 6px;color:var(--pri)}
+.doc .caixa{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin:10px 0}
+.doc .caixa p{margin:4px 0}
+.doc small{color:var(--tx2)}
+.cfg{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 0;border-bottom:1px solid var(--linha)}
+.seg{display:flex;background:var(--bg2);border-radius:10px;padding:3px;flex-wrap:wrap}
+.seg button{padding:7px 11px;border-radius:8px;font-size:14px;color:var(--tx2)}
+.seg button.on{background:var(--card);color:var(--pri);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+/* barra inferior */
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--card);border-top:1px solid var(--linha);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.barra button{flex:1;padding:8px 0 9px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;color:var(--tx2)}
+.barra button span{font-size:20px;line-height:1.1}
+.barra button.on{color:var(--pri);font-weight:600}
+/* folha do versículo */
+.fundo{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:40;display:none}
+.fundo.on{display:block}
+.folha{position:fixed;left:0;right:0;bottom:0;z-index:41;background:var(--card);border-radius:18px 18px 0 0;box-shadow:var(--sombra);padding:10px 16px calc(16px + env(safe-area-inset-bottom));transform:translateY(105%);transition:transform .2s ease;max-width:720px;margin:0 auto;max-height:85vh;overflow:auto}
+.folha.on{transform:none}
+.alca{width:40px;height:4px;border-radius:4px;background:var(--linha);margin:0 auto 10px}
+.folha .fr{font-weight:600;color:var(--pri);margin-bottom:4px}
+.folha .ft{font-family:var(--serif);font-size:16px;line-height:1.55;margin-bottom:12px;max-height:30vh;overflow:auto}
+.cores{display:flex;gap:10px;margin:6px 0 14px;align-items:center}
+.cores button{width:36px;height:36px;border-radius:50%;border:2px solid var(--linha)}
+.cores button.on{border-color:var(--pri);border-width:3px}
+.acoes{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.acoes button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px;border-radius:12px;background:var(--bg2);font-size:12px}
+.acoes button span{font-size:20px}
+.folha textarea{min-height:110px;margin:8px 0}
+.toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.on{opacity:1}
+.carregando{text-align:center;color:var(--tx2);padding:60px 0}
+</style>
+</head>
+<body>
+<header class="topo">
+  <button class="ref" id="btRef" onclick="irPara('livros')">…</button>
+  <div class="trad" id="trad">
+    <button data-t="blivre">BL</button><button data-t="bpm">BPM</button><button data-t="cmp">Comparar</button>
+  </div>
+</header>
+
+<main>
+  <section class="tela on" id="t-ler"><div class="carregando">Abrindo a Bíblia…</div></section>
+  <section class="tela" id="t-livros"></section>
+  <section class="tela" id="t-busca">
+    <div class="busca-bar">
+      <input id="q" type="search" placeholder="Buscar palavra ou frase (ex.: amor ao próximo)" enterkeyhint="search">
+      <button class="btn" onclick="buscar()">Buscar</button>
+    </div>
+    <div class="seg" id="buscaTrad" style="display:inline-flex"><button data-t="blivre">Bíblia Livre</button><button data-t="bpm">Portuguesa Mundial</button></div>
+    <div id="resBusca"></div>
+  </section>
+  <section class="tela" id="t-meus"></section>
+  <section class="tela" id="t-sobre"></section>
+</main>
+
+<nav class="barra" id="barra">
+  <button data-t="ler" class="on"><span>📖</span>Ler</button>
+  <button data-t="livros"><span>📚</span>Livros</button>
+  <button data-t="busca"><span>🔍</span>Buscar</button>
+  <button data-t="meus"><span>⭐</span>Meus estudos</button>
+  <button data-t="sobre"><span>ℹ️</span>Sobre</button>
+</nav>
+
+<div class="fundo" id="fundo" onclick="fecharFolha()"></div>
+<div class="folha" id="folha"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- livros ----------
+// [código, nome, abreviação, grupo, página do interlinear (biblehub)]
+const LIVROS = [
+ ['GEN','Gênesis','Gn','at','genesis'],['EXO','Êxodo','Êx','at','exodus'],['LEV','Levítico','Lv','at','leviticus'],['NUM','Números','Nm','at','numbers'],['DEU','Deuteronômio','Dt','at','deuteronomy'],
+ ['JOS','Josué','Js','at','joshua'],['JDG','Juízes','Jz','at','judges'],['RUT','Rute','Rt','at','ruth'],['1SA','1 Samuel','1Sm','at','1_samuel'],['2SA','2 Samuel','2Sm','at','2_samuel'],
+ ['1KI','1 Reis','1Rs','at','1_kings'],['2KI','2 Reis','2Rs','at','2_kings'],['1CH','1 Crônicas','1Cr','at','1_chronicles'],['2CH','2 Crônicas','2Cr','at','2_chronicles'],['EZR','Esdras','Ed','at','ezra'],
+ ['NEH','Neemias','Ne','at','nehemiah'],['EST','Ester','Et','at','esther'],['JOB','Jó','Jó','at','job'],['PSA','Salmos','Sl','at','psalms'],['PRO','Provérbios','Pv','at','proverbs'],
+ ['ECC','Eclesiastes','Ec','at','ecclesiastes'],['SOL','Cântico dos Cânticos','Ct','at','songs'],['ISA','Isaías','Is','at','isaiah'],['JER','Jeremias','Jr','at','jeremiah'],['LAM','Lamentações','Lm','at','lamentations'],
+ ['EZE','Ezequiel','Ez','at','ezekiel'],['DAN','Daniel','Dn','at','daniel'],['HOS','Oseias','Os','at','hosea'],['JOE','Joel','Jl','at','joel'],['AMO','Amós','Am','at','amos'],
+ ['OBA','Obadias','Ob','at','obadiah'],['JON','Jonas','Jn','at','jonah'],['MIC','Miqueias','Mq','at','micah'],['NAH','Naum','Na','at','nahum'],['HAB','Habacuque','Hc','at','habakkuk'],
+ ['ZEP','Sofonias','Sf','at','zephaniah'],['HAG','Ageu','Ag','at','haggai'],['ZEC','Zacarias','Zc','at','zechariah'],['MAL','Malaquias','Ml','at','malachi'],
+ ['TOB','Tobias','Tb','dc'],['JDT','Judite','Jt','dc'],['ESG','Ester (texto grego completo)','Et gr','dc'],['WIS','Sabedoria','Sb','dc'],['SIR','Eclesiástico (Sirácida)','Eclo','dc'],
+ ['BAR','Baruc','Br','dc'],['1MA','1 Macabeus','1Mc','dc'],['2MA','2 Macabeus','2Mc','dc'],['DNG','Daniel (texto grego completo)','Dn gr','dc'],
+ ['MAT','Mateus','Mt','nt','matthew'],['MAR','Marcos','Mc','nt','mark'],['LUK','Lucas','Lc','nt','luke'],['JOH','João','Jo','nt','john'],['ACT','Atos','At','nt','acts'],
+ ['ROM','Romanos','Rm','nt','romans'],['1CO','1 Coríntios','1Co','nt','1_corinthians'],['2CO','2 Coríntios','2Co','nt','2_corinthians'],['GAL','Gálatas','Gl','nt','galatians'],['EPH','Efésios','Ef','nt','ephesians'],
+ ['PHI','Filipenses','Fp','nt','philippians'],['COL','Colossenses','Cl','nt','colossians'],['1TH','1 Tessalonicenses','1Ts','nt','1_thessalonians'],['2TH','2 Tessalonicenses','2Ts','nt','2_thessalonians'],['1TI','1 Timóteo','1Tm','nt','1_timothy'],
+ ['2TI','2 Timóteo','2Tm','nt','2_timothy'],['TIT','Tito','Tt','nt','titus'],['PHM','Filemom','Fm','nt','philemon'],['HEB','Hebreus','Hb','nt','hebrews'],['JAM','Tiago','Tg','nt','james'],
+ ['1PE','1 Pedro','1Pe','nt','1_peter'],['2PE','2 Pedro','2Pe','nt','2_peter'],['1JO','1 João','1Jo','nt','1_john'],['2JO','2 João','2Jo','nt','2_john'],['3JO','3 João','3Jo','nt','3_john'],
+ ['JUD','Judas','Jd','nt','jude'],['REV','Apocalipse','Ap','nt','revelation'],
+ ['1ES','1 Esdras','1Esd','or'],['PRM','Oração de Manassés','OrMan','or'],['PSX','Salmo 151','Sl 151','or'],['3MA','3 Macabeus','3Mc','or'],['4ES','2 Esdras (4 Esdras)','2Esd','or'],['4MA','4 Macabeus','4Mc','or'],
+];
+const LIV = Object.fromEntries(LIVROS.map((l, i) => [l[0], {cod: l[0], nome: l[1], abr: l[2], grupo: l[3], hub: l[4], i}]));
+const GRUPOS = {at: 'Antigo Testamento', dc: 'Livros deuterocanônicos (Bíblia católica)', nt: 'Novo Testamento', or: 'Outros livros antigos (Igreja Ortodoxa)'};
+const TRAD = {
+  blivre: {sigla: 'BL', nome: 'Bíblia Livre'},
+  bpm: {sigla: 'BPM', nome: 'Bíblia Portuguesa Mundial'},
+};
+
+// ---------- estado (fica só neste aparelho) ----------
+const CHAVE = 'biblia_v1';
+let E = {livro: 'JOH', cap: 1, trad: 'blivre', modo: 'blivre', tema: '', fs: 19, buscaTrad: 'blivre', marcas: {}};
+try { Object.assign(E, JSON.parse(localStorage.getItem(CHAVE) || '{}')); } catch (e) {}
+function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(E)); } catch (e) {} }
+// marcas: { "JOH.3.16": {cor:'h1', fav:true, nota:'...', em:Date.now()} }
+
+const DADOS = {};
+function carregar(t) {
+  if (!DADOS[t]) DADOS[t] = fetch('dados/' + t + '.json').then(r => { if (!r.ok) throw new Error(r.status); return r.json(); }).then(j => j.livros).catch(e => { delete DADOS[t]; throw e; });
+  return DADOS[t];
+}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+// [palavras entre colchetes] = palavras que o tradutor acrescentou para o português fazer sentido
+const fmt = s => esc(s).replace(/\[([^\]]*)\]/g, '<span class="add">$1</span>');
+const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1800); }
+function refTxt(liv, cap, ver) { const L = LIV[liv]; return (L ? L.nome : liv) + ' ' + cap + (ver ? ':' + ver : ''); }
+
+// ---------- temas ----------
+function aplicarTema() {
+  if (E.tema) document.documentElement.dataset.theme = E.tema; else delete document.documentElement.dataset.theme;
+  document.documentElement.style.setProperty('--fs', E.fs + 'px');
+  const escuro = E.tema === 'dark' || (!E.tema && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.querySelector('meta[name=theme-color]').content = escuro ? '#17130f' : (E.tema === 'sepia' ? '#f4ecd8' : '#fbf8f3');
+}
+aplicarTema();
+
+// ---------- navegação entre telas ----------
+let telaAtual = 'ler';
+function irPara(t) {
+  telaAtual = t;
+  document.querySelectorAll('.tela').forEach(s => s.classList.toggle('on', s.id === 't-' + t));
+  document.querySelectorAll('#barra button').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  $('#trad').style.visibility = t === 'ler' ? 'visible' : 'hidden';
+  if (t === 'livros') telaLivros();
+  if (t === 'meus') telaMeus();
+  if (t === 'sobre') telaSobre();
+  if (t === 'busca') { marcarSeg('#buscaTrad', E.buscaTrad); setTimeout(() => $('#q').focus(), 50); }
+  scrollTo(0, 0);
+}
+$('#barra').onclick = e => { const b = e.target.closest('button'); if (b) irPara(b.dataset.t); };
+$('#trad').onclick = e => { const b = e.target.closest('button'); if (!b) return; E.modo = b.dataset.t; if (E.modo !== 'cmp') E.trad = E.modo; salvar(); ler(); };
+function marcarSeg(sel, v) { document.querySelectorAll(sel + ' button').forEach(b => b.classList.toggle('on', b.dataset.t === v)); }
+
+// ---------- leitura ----------
+async function ler(opt = {}) {
+  marcarSeg('#trad', E.modo);
+  const L = LIV[E.livro];
+  $('#btRef').innerHTML = esc(L.nome + ' ' + E.cap) + ' <small>▾</small>';
+  const el = $('#t-ler');
+  const trads = E.modo === 'cmp' ? ['blivre', 'bpm'] : [E.modo];
+  let textos;
+  try { textos = await Promise.all(trads.map(carregar)); }
+  catch (e) { el.innerHTML = '<div class="aviso">Não consegui abrir o texto. Na primeira vez o app precisa de internet para baixar a Bíblia; depois funciona sem internet.<br><button class="btn" onclick="ler()">Tentar de novo</button></div>'; return; }
+  const caps = textos.map(t => (t[E.livro] || []));
+  const nCaps = Math.max(...caps.map(c => c.length));
+  if (E.cap > nCaps) E.cap = Math.max(nCaps, 1);
+  let h = `<div class="cap-tit">${esc(L.nome)} ${E.cap}</div><div class="cap-sub">${trads.map(t => TRAD[t].nome).join(' × ')}</div>`;
+  const faltam = trads.filter((t, i) => !caps[i].length);
+  if (faltam.length) {
+    h += `<div class="aviso">O livro <b>${esc(L.nome)}</b> não faz parte da <b>${TRAD[faltam[0]].nome}</b>. Ela segue a lista de livros das Bíblias evangélicas (66 livros). As Bíblias católicas trazem também os livros deuterocanônicos, e as ortodoxas mais alguns.` +
+      (E.modo !== 'cmp' ? `<br><button class="btn" onclick="E.modo=E.trad='bpm';salvar();ler()">Ler na Bíblia Portuguesa Mundial</button>` : '') + '</div>';
+  }
+  if (E.modo === 'cmp') {
+    const n = Math.max(...caps.map(c => (c[E.cap - 1] || []).length));
+    h += '<div class="texto">';
+    for (let v = 1; v <= n; v++) {
+      const linhas = trads.map((t, i) => { const tx = (caps[i][E.cap - 1] || [])[v - 1]; return tx ? `<span class="lin"><b>${TRAD[t].sigla}</b>${fmt(tx)}</span>` : ''; }).join('');
+      if (!linhas) continue;
+      const m = E.marcas[E.livro + '.' + E.cap + '.' + v] || {};
+      h += `<span class="v cmp ${m.cor || ''}" data-v="${v}"><sup>${v}</sup>${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}${linhas}</span>`;
+    }
+    h += '</div>';
+  } else if (caps[0].length) {
+    const vs = caps[0][E.cap - 1] || [];
+    h += '<div class="texto paragrafo">';
+    vs.forEach((tx, i) => {
+      if (!tx) return;
+      const v = i + 1, m = E.marcas[E.livro + '.' + E.cap + '.' + v] || {};
+      h += `<span class="v ${m.cor || ''}" data-v="${v}"><sup>${v}</sup>${fmt(tx)}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span> `;
+    });
+    h += '</div>';
+  }
+  const [ant, prox] = vizinhos();
+  h += `<div class="nav-cap"><button ${ant ? '' : 'disabled'} onclick="mudar(-1)">‹ ${ant ? esc(LIV[ant[0]].abr + ' ' + ant[1]) : ''}</button><button ${prox ? '' : 'disabled'} onclick="mudar(1)">${prox ? esc(LIV[prox[0]].abr + ' ' + prox[1]) : ''} ›</button></div>`;
+  el.innerHTML = h;
+  if (opt.ver) {
+    const alvo = el.querySelector(`.v[data-v="${opt.ver}"]`);
+    if (alvo) { alvo.classList.add('sel'); setTimeout(() => alvo.scrollIntoView({block: 'center'}), 30); setTimeout(() => alvo.classList.remove('sel'), 2500); }
+  } else if (!opt.manterScroll) scrollTo(0, 0);
+  salvar();
+}
+function capsDe(liv) {
+  const t = E.modo === 'cmp' ? ['blivre', 'bpm'] : [E.modo];
+  return Math.max(0, ...t.map(x => (CAPS[x] && CAPS[x][liv]) || 0));
+}
+const CAPS = {};
+async function contarCaps(t) { const d = await carregar(t); CAPS[t] = Object.fromEntries(Object.entries(d).map(([k, v]) => [k, v.length])); }
+function vizinhos() {
+  const seq = LIVROS.filter(l => capsDe(l[0]) > 0 && (E.modo !== 'cmp' || l[3] !== 'or')).map(l => l[0]);
+  const i = seq.indexOf(E.livro), n = capsDe(E.livro);
+  const ant = E.cap > 1 ? [E.livro, E.cap - 1] : (i > 0 ? [seq[i - 1], capsDe(seq[i - 1])] : null);
+  const prox = E.cap < n ? [E.livro, E.cap + 1] : (i >= 0 && i < seq.length - 1 ? [seq[i + 1], 1] : null);
+  return [ant, prox];
+}
+function mudar(d) { const [a, p] = vizinhos(); const x = d < 0 ? a : p; if (!x) return; E.livro = x[0]; E.cap = x[1]; ler(); }
+function abrir(liv, cap, ver) { E.livro = liv; E.cap = cap; irPara('ler'); ler({ver}); }
+
+// deslizar para o lado muda o capítulo
+let tx0 = null, ty0 = null;
+$('#t-ler').addEventListener('touchstart', e => { tx0 = e.touches[0].clientX; ty0 = e.touches[0].clientY; }, {passive: true});
+$('#t-ler').addEventListener('touchend', e => {
+  if (tx0 === null) return; const dx = e.changedTouches[0].clientX - tx0, dy = e.changedTouches[0].clientY - ty0; tx0 = null;
+  if (Math.abs(dx) > 80 && Math.abs(dx) > Math.abs(dy) * 2) mudar(dx < 0 ? 1 : -1);
+});
+
+// ---------- tocar no versículo ----------
+let selV = null;
+$('#t-ler').addEventListener('click', e => {
+  const v = e.target.closest('.v'); if (!v || window.getSelection().toString()) return;
+  abrirFolha(E.livro, E.cap, +v.dataset.v);
+});
+async function textoVers(t, liv, cap, ver) { const d = await carregar(t); return ((d[liv] || [])[cap - 1] || [])[ver - 1] || ''; }
+async function abrirFolha(liv, cap, ver) {
+  selV = {liv, cap, ver};
+  const k = liv + '.' + cap + '.' + ver, m = E.marcas[k] || {};
+  document.querySelectorAll('.v.sel').forEach(x => x.classList.remove('sel'));
+  const vEl = $(`#t-ler .v[data-v="${ver}"]`); if (vEl && liv === E.livro && cap === E.cap) vEl.classList.add('sel');
+  const t = E.modo === 'cmp' ? 'blivre' : E.modo;
+  const tx = await textoVers(t, liv, cap, ver) || await textoVers('bpm', liv, cap, ver);
+  const L = LIV[liv];
+  $('#folha').innerHTML = `<div class="alca"></div>
+    <div class="fr">${esc(refTxt(liv, cap, ver))}</div>
+    <div class="ft">${fmt(tx)}</div>
+    <div class="cores">
+      <button class="${!m.cor ? 'on' : ''}" style="background:var(--card)" title="Sem cor" onclick="pintar('')">✕</button>
+      ${['h1', 'h2', 'h3', 'h4'].map(c => `<button class="${m.cor === c ? 'on' : ''}" style="background:var(--${c})" onclick="pintar('${c}')"></button>`).join('')}
+    </div>
+    <div class="acoes">
+      <button onclick="favoritar()"><span>${m.fav ? '⭐' : '☆'}</span>${m.fav ? 'Favorito' : 'Favoritar'}</button>
+      <button onclick="editarNota()"><span>📝</span>Nota</button>
+      <button onclick="compararVers()"><span>⚖️</span>Comparar</button>
+      <button onclick="copiar()"><span>📋</span>Copiar</button>
+      ${L.hub ? `<button onclick="original()"><span>🔤</span>Original</button>` : ''}
+      <button onclick="compartilhar()"><span>📤</span>Enviar</button>
+      <button onclick="fecharFolha()"><span>✖️</span>Fechar</button>
+    </div>
+    <div id="folhaExtra"></div>`;
+  $('#fundo').classList.add('on'); $('#folha').classList.add('on');
+}
+function fecharFolha() { $('#fundo').classList.remove('on'); $('#folha').classList.remove('on'); document.querySelectorAll('.v.sel').forEach(x => x.classList.remove('sel')); }
+function marca(criar) { const k = selV.liv + '.' + selV.cap + '.' + selV.ver; if (!E.marcas[k] && criar) E.marcas[k] = {}; return [k, E.marcas[k]]; }
+function limparMarca(k) { const m = E.marcas[k]; if (m && !m.cor && !m.fav && !m.nota) delete E.marcas[k]; }
+function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
+function pintar(c) { const [k, m] = marca(true); m.cor = c; depoisMarca(k); fecharFolha(); }
+function favoritar() { const [k, m] = marca(true); m.fav = !m.fav; depoisMarca(k); toast(m.fav ? 'Guardado nos favoritos' : 'Tirado dos favoritos'); fecharFolha(); }
+function editarNota() {
+  const [, m] = marca(false);
+  $('#folhaExtra').innerHTML = `<textarea id="notaTx" placeholder="Escreva o que você entendeu, uma dúvida, uma oração…">${esc((m && m.nota) || '')}</textarea>
+    <div style="display:flex;gap:8px"><button class="btn" onclick="salvarNota()">Salvar nota</button><button class="btn2" onclick="fecharFolha()">Cancelar</button></div>`;
+  setTimeout(() => $('#notaTx').focus(), 50);
+}
+function salvarNota() { const [k, m] = marca(true); m.nota = $('#notaTx').value.trim(); depoisMarca(k); toast('Nota salva'); fecharFolha(); }
+async function compararVers() {
+  const {liv, cap, ver} = selV;
+  const [a, b] = await Promise.all([textoVers('blivre', liv, cap, ver), textoVers('bpm', liv, cap, ver)]);
+  $('#folhaExtra').innerHTML = `<div class="aviso" style="margin:12px 0 0"><b>Bíblia Livre</b><br><span style="font-family:var(--serif)">${a ? fmt(a) : '<i>(livro ou versículo não existe nesta tradução)</i>'}</span><br><br><b>Bíblia Portuguesa Mundial</b><br><span style="font-family:var(--serif)">${b ? fmt(b) : '<i>(versículo não existe nesta tradução)</i>'}</span>` +
+    (LIV[liv].hub ? `<br><br><small>Quer ir mais fundo? Toque em <b>🔤 Original</b> para ver as palavras em hebraico/grego.</small>` : '') + '</div>';
+}
+async function textoParaCopiar() { const t = E.modo === 'cmp' ? 'blivre' : E.modo; const tx = (await textoVers(t, selV.liv, selV.cap, selV.ver)).replace(/[\[\]]/g, ''); return `"${tx}" — ${refTxt(selV.liv, selV.cap, selV.ver)} (${TRAD[t].sigla})`; }
+async function copiar() { const s = await textoParaCopiar(); try { await navigator.clipboard.writeText(s); toast('Copiado'); } catch (e) { prompt('Copie o texto:', s); } fecharFolha(); }
+async function compartilhar() { const s = await textoParaCopiar(); if (navigator.share) { try { await navigator.share({text: s}); } catch (e) {} } else { copiar(); } fecharFolha(); }
+function original() {
+  const L = LIV[selV.liv];
+  window.open(`https://biblehub.com/interlinear/${L.hub}/${selV.cap}-${selV.ver}.htm`, '_blank', 'noopener');
+}
+
+// ---------- livros ----------
+let livroEscolhido = null, abaLivros = null;
+function telaLivros() {
+  const el = $('#t-livros');
+  if (livroEscolhido) {
+    const L = LIV[livroEscolhido], n = capsDe(livroEscolhido) || Math.max((CAPS.blivre || {})[livroEscolhido] || 0, (CAPS.bpm || {})[livroEscolhido] || 0);
+    let h = `<button class="voltar" onclick="livroEscolhido=null;telaLivros()">‹ Livros</button><div class="cap-tit" style="text-align:left;margin-top:6px">${esc(L.nome)}</div><div class="info">Escolha o capítulo</div><div class="caps">`;
+    for (let c = 1; c <= n; c++) h += `<button class="${livroEscolhido === E.livro && c === E.cap ? 'atual' : ''}" onclick="escolherCap(${c})">${c}</button>`;
+    el.innerHTML = h + '</div>';
+    return;
+  }
+  const grupo = abaLivros || LIV[E.livro].grupo;
+  let h = '<div class="abas">' + Object.entries(GRUPOS).map(([g, n]) => `<button class="${g === grupo ? 'on' : ''}" onclick="abaLivros='${g}';telaLivros()">${{at: 'Antigo T.', dc: 'Deuterocanônicos', nt: 'Novo T.', or: 'Outros'}[g]}</button>`).join('') + '</div>';
+  h += `<div class="grupo-tit">${GRUPOS[grupo]}</div>`;
+  if (grupo === 'dc') h += '<div class="info">Estão nas Bíblias católicas, não nas evangélicas nem na Tradução do Novo Mundo. Disponíveis na Bíblia Portuguesa Mundial.</div>';
+  if (grupo === 'or') h += '<div class="info">Usados pelas Igrejas Ortodoxas; não estão nas Bíblias católicas nem evangélicas. Disponíveis na Bíblia Portuguesa Mundial.</div>';
+  h += '<div class="lista-livros">';
+  LIVROS.filter(l => l[3] === grupo).forEach(l => {
+    const n = Math.max((CAPS.blivre || {})[l[0]] || 0, (CAPS.bpm || {})[l[0]] || 0);
+    h += `<button class="${l[0] === E.livro ? 'atual' : ''}" onclick="livroEscolhido='${l[0]}';telaLivros();scrollTo(0,0)">${esc(l[1])}<small>${n ? n + (n > 1 ? ' capítulos' : ' capítulo') : ''}</small></button>`;
+  });
+  el.innerHTML = h + '</div><div style="height:20px"></div>';
+}
+function escolherCap(c) {
+  const liv = livroEscolhido; livroEscolhido = null;
+  // livro que não existe na tradução aberta: abre na que tem
+  if (E.modo === 'blivre' && !(CAPS.blivre || {})[liv]) { E.modo = E.trad = 'bpm'; toast('Aberto na Bíblia Portuguesa Mundial'); }
+  abrir(liv, c);
+}
+
+// ---------- busca ----------
+$('#buscaTrad').onclick = e => { const b = e.target.closest('button'); if (!b) return; E.buscaTrad = b.dataset.t; salvar(); marcarSeg('#buscaTrad', E.buscaTrad); if ($('#q').value.trim()) buscar(); };
+$('#q').addEventListener('keydown', e => { if (e.key === 'Enter') buscar(); });
+async function buscar() {
+  const q = $('#q').value.trim(), el = $('#resBusca');
+  if (q.length < 2) { el.innerHTML = '<div class="vazio">Digite pelo menos 2 letras.</div>'; return; }
+  // atalho: "Jo 3:16", "joão 3 16", "salmos 23"
+  const r = q.match(/^(.+?)\s*(\d+)(?:\s*[:.,\s]\s*(\d+))?$/);
+  if (r) {
+    const bruto = r[1].replace(/\s+/g, ' ').trim().toLowerCase(), nome = semAcento(bruto);
+    // primeiro com acento ("jo" = João, "jó" = Jó), depois sem acento
+    const L = LIVROS.find(l => l[1].toLowerCase() === bruto || l[2].toLowerCase() === bruto.replace(/\s/g, '')) ||
+      LIVROS.find(l => semAcento(l[1]) === nome || semAcento(l[2]) === nome.replace(/\s/g, '')) || LIVROS.find(l => semAcento(l[1]).startsWith(nome));
+    if (L && nome.length >= 2) { abrir(L[0], +r[2], r[3] ? +r[3] : undefined); return; }
+  }
+  el.innerHTML = '<div class="vazio">Procurando…</div>';
+  const d = await carregar(E.buscaTrad);
+  const termos = semAcento(q).split(/\s+/).filter(Boolean);
+  const achados = [];
+  for (const l of LIVROS) {
+    const caps = d[l[0]]; if (!caps) continue;
+    caps.forEach((vs, c) => vs.forEach((tx, v) => { if (!tx) return; const s = semAcento(tx); if (termos.every(t => s.includes(t))) achados.push([l[0], c + 1, v + 1, tx]); }));
+  }
+  if (!achados.length) { el.innerHTML = `<div class="vazio">Nada encontrado para “${esc(q)}”.<br>Tente outra palavra ou a outra tradução.</div>`; return; }
+  const LIM = 300;
+  const rx = new RegExp('(' + termos.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'gi');
+  el.innerHTML = `<div class="info">${achados.length} versículo${achados.length > 1 ? 's' : ''}${achados.length > LIM ? ' — mostrando os ' + LIM + ' primeiros' : ''}</div>` +
+    achados.slice(0, LIM).map(([l, c, v, tx]) => `<div class="res" onclick="abrirBusca('${l}',${c},${v})"><div class="r">${esc(refTxt(l, c, v))}</div><div class="t">${destacar(tx, rx)}</div></div>`).join('');
+}
+function destacar(tx, rx) {
+  // destaca sem depender de acento: compara a versão sem acento, letra a letra
+  const limpo = tx.replace(/[\[\]]/g, ''), s = semAcento(limpo);
+  let out = '', i = 0, m; rx.lastIndex = 0;
+  while ((m = rx.exec(s))) { out += esc(limpo.slice(i, m.index)) + '<mark>' + esc(limpo.slice(m.index, m.index + m[0].length)) + '</mark>'; i = m.index + m[0].length; if (!m[0].length) rx.lastIndex++; }
+  return out + esc(limpo.slice(i));
+}
+function abrirBusca(l, c, v) { if (E.modo !== 'cmp') E.modo = E.trad = (CAPS[E.buscaTrad] || {})[l] ? E.buscaTrad : 'bpm'; abrir(l, c, v); }
+
+// ---------- meus estudos ----------
+let filtroMeus = 'tudo';
+async function telaMeus() {
+  const el = $('#t-meus');
+  const itens = Object.entries(E.marcas).map(([k, m]) => { const [l, c, v] = k.split('.'); return {k, l, c: +c, v: +v, m}; })
+    .filter(x => filtroMeus === 'tudo' || (filtroMeus === 'fav' && x.m.fav) || (filtroMeus === 'nota' && x.m.nota) || (filtroMeus === 'cor' && x.m.cor))
+    .sort((a, b) => (LIV[a.l]?.i - LIV[b.l]?.i) || a.c - b.c || a.v - b.v);
+  let h = '<div class="abas">' + [['tudo', 'Tudo'], ['fav', '⭐ Favoritos'], ['nota', '📝 Notas'], ['cor', '🖍 Destaques']].map(([f, n]) => `<button class="${f === filtroMeus ? 'on' : ''}" onclick="filtroMeus='${f}';telaMeus()">${n}</button>`).join('') + '</div>';
+  if (!itens.length) h += '<div class="vazio">Nada aqui ainda.<br>Enquanto lê, <b>toque num versículo</b> para destacar com cor, favoritar ou escrever uma nota.</div>';
+  const t = E.trad;
+  const d = await carregar(t).catch(() => ({}));
+  const db = t === 'bpm' ? d : await carregar('bpm').catch(() => ({}));
+  for (const x of itens) {
+    const tx = ((d[x.l] || [])[x.c - 1] || [])[x.v - 1] || ((db[x.l] || [])[x.c - 1] || [])[x.v - 1] || '';
+    h += `<div class="res" onclick="abrir('${x.l}',${x.c},${x.v})"><div class="r">${x.m.fav ? '⭐ ' : ''}${x.m.cor ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${x.m.cor});margin-right:4px"></span>` : ''}${esc(refTxt(x.l, x.c, x.v))}</div><div class="t">${fmt(tx)}</div>${x.m.nota ? `<div class="n">${esc(x.m.nota)}</div>` : ''}</div>`;
+  }
+  h += `<div class="aviso" style="margin-top:26px"><b>Cópia de segurança</b><br>Seus destaques e notas ficam guardados só neste celular. Se trocar de aparelho ou limpar o navegador, eles se perdem — de vez em quando, salve uma cópia.<br>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="exportar()">Salvar cópia</button><button class="btn2" onclick="$('#arqImp').click()">Restaurar cópia</button></div>
+    <input type="file" id="arqImp" accept=".json,application/json" style="display:none" onchange="importar(this.files[0])"></div><div style="height:20px"></div>`;
+  el.innerHTML = h;
+}
+function exportar() {
+  const blob = new Blob([JSON.stringify({app: 'biblia', versao: 1, data: new Date().toISOString(), marcas: E.marcas}, null, 1)], {type: 'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'meus-estudos-biblia-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
+function importar(f) {
+  if (!f) return;
+  f.text().then(s => { const j = JSON.parse(s); if (!j.marcas) throw 0; let n = 0; for (const [k, m] of Object.entries(j.marcas)) { const atual = E.marcas[k]; if (!atual || (m.em || 0) > (atual.em || 0)) { E.marcas[k] = m; n++; } } salvar(); toast(n + ' marcações restauradas'); telaMeus(); })
+    .catch(() => toast('Arquivo inválido'));
+}
+
+// ---------- sobre e ajustes ----------
+function telaSobre() {
+  $('#t-sobre').innerHTML = `<div class="doc">
+  <h2>Ajustes</h2>
+  <div class="cfg"><span>Tamanho da letra</span><div class="seg"><button onclick="letra(-1)">A−</button><button class="on" style="min-width:44px">${E.fs}</button><button onclick="letra(1)">A+</button></div></div>
+  <div class="cfg"><span>Aparência</span><div class="seg" id="segTema">${[['', 'Auto'], ['light', 'Clara'], ['sepia', 'Sépia'], ['dark', 'Escura']].map(([v, n]) => `<button class="${E.tema === v ? 'on' : ''}" onclick="E.tema='${v}';salvar();aplicarTema();telaSobre()">${n}</button>`).join('')}</div></div>
+
+  <h2>Por que esta Bíblia</h2>
+  <p>Você pediu uma Bíblia honesta, sem manipulação. Nenhuma tradução é perfeita — toda tradução faz escolhas. O jeito mais seguro de não ser conduzido por ninguém é ter <b>como conferir</b>. Por isso este app traz:</p>
+  <div class="caixa"><p><b>1. Duas traduções independentes</b>, feitas por grupos diferentes, que não pertencem a nenhuma igreja ou organização religiosa e são de uso livre (ninguém é dono do texto).</p></div>
+  <div class="caixa"><p><b>2. Comparar</b> — no topo da leitura, toque em <b>Comparar</b> para ver as duas lado a lado, versículo por versículo. Onde elas concordam, você pode ter confiança no sentido. Onde diferem, vale olhar o original.</p></div>
+  <div class="caixa"><p><b>3. Original</b> — toque num versículo e em <b>🔤 Original</b> para ver cada palavra em hebraico (Antigo Testamento) ou grego (Novo Testamento), com a tradução palavra por palavra. Essa página é em inglês (site BibleHub) e precisa de internet.</p></div>
+  <div class="caixa"><p><b>4. Palavras acrescentadas à vista</b> — na Bíblia Livre, as palavras que não existem no original e foram colocadas só para o português fazer sentido aparecem <span style="font-style:italic;color:var(--add)">em itálico cinza</span>. Assim você sabe o que é texto e o que é ajuda do tradutor.</p></div>
+  <p>E a regra de ouro, que vale para qualquer Bíblia: <b>leia o capítulo inteiro</b>, não só um versículo solto. O contexto protege contra interpretações forçadas.</p>
+
+  <h2>As traduções</h2>
+  <h3>Bíblia Livre (BL)</h3>
+  <p>Atualização para o português do Brasil da tradução de <b>João Ferreira de Almeida</b> (edição de 1819), a mais antiga e tradicional Bíblia em português, usada há séculos. Traduzida do hebraico e do grego (Texto Massorético e <i>Textus Receptus</i>). Linguagem mais clássica. 66 livros (lista das Bíblias evangélicas). Onde o original traz o nome de Deus (as letras hebraicas YHWH), ela usa “SENHOR” e, em alguns lugares, “EU-SOU”.</p>
+  <p><small>Bíblia Livre (BLIVRE), Copyright © Diego Santos, Mario Sérgio e Marco Teles, versão de fevereiro de 2018. Licença Creative Commons Atribuição 4.0 Brasil. Texto obtido em eBible.org e reproduzido sem alterações.</small></p>
+  <h3>Bíblia Portuguesa Mundial (BPM)</h3>
+  <p>Tradução moderna e de linguagem mais simples, baseada na <i>World English Bible</i>, que por sua vez foi feita a partir do hebraico e do grego. Inclui os <b>livros deuterocanônicos</b> que você encontra na Bíblia católica (Tobias, Judite, Sabedoria, Eclesiástico, Baruc, 1 e 2 Macabeus e as partes gregas de Ester e Daniel), e também os livros usados pelas Igrejas Ortodoxas, em seção separada. Usa “SENHOR” para o nome de Deus. Ainda está em revisão pelos tradutores.</p>
+  <p><small>Bíblia Portuguesa Mundial — domínio público. Texto obtido em eBible.org (versão de 08/10/2026) e reproduzido sem alterações.</small></p>
+
+  <h2>Sobre o nome de Deus</h2>
+  <p>No Antigo Testamento hebraico, o nome de Deus aparece cerca de 7 mil vezes escrito com quatro letras: <b>YHWH</b>. A pronúncia exata se perdeu, porque por respeito os judeus deixaram de pronunciá-lo em voz alta e liam “Adonai” (Senhor). Por isso a maioria das Bíblias escreve <b>SENHOR</b> em letras maiúsculas — isso indica que ali, no original, está o nome. Outras traduções escrevem “Javé”, “Iavé” ou “Jeová”. São escolhas de tradução; o texto original é o mesmo. Quando quiser ver exatamente o que está escrito, use o botão <b>🔤 Original</b>.</p>
+
+  <h2>Como funciona o app</h2>
+  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
+  <p><small>Feito para Marcus do Vale.</small></p>
+  </div>`;
+}
+function letra(d) { E.fs = Math.min(30, Math.max(14, E.fs + d)); salvar(); aplicarTema(); telaSobre(); }
+
+// ---------- início ----------
+document.addEventListener('keydown', e => { if (telaAtual !== 'ler' || e.target.matches('input,textarea')) return; if (e.key === 'ArrowRight') mudar(1); if (e.key === 'ArrowLeft') mudar(-1); if (e.key === 'Escape') fecharFolha(); });
+(async () => {
+  try { await Promise.all([contarCaps('blivre'), contarCaps('bpm')]); } catch (e) {}
+  if (!LIV[E.livro]) E.livro = 'JOH';
+  ler();
+})();
+if ('serviceWorker' in navigator) { let rec = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (rec) return; rec = true; location.reload(); }); addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(r => r.update()).catch(() => {})); }
+</script>
+</body>
+</html>
