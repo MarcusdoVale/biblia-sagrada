@@ -126,6 +126,17 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .carregando{text-align:center;color:var(--tx2);padding:60px 0}
+/* devocional */
+.dev-data{text-align:center;color:var(--tx2);font-size:13px;margin-top:20px;text-transform:capitalize}
+.dev-tema{font-family:var(--serif);font-size:26px;font-weight:600;text-align:center;margin:6px 0 18px;line-height:1.3}
+.dev-p{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin:0 0 10px}
+.dev-p .r{font-size:13px;font-weight:600;color:var(--pri);margin-bottom:4px;display:flex;justify-content:space-between;gap:8px}
+.dev-p .r span{font-weight:500;color:var(--tx2)}
+.dev-p .t{font-family:var(--serif);font-size:calc(var(--fs,19px) - 2px);line-height:1.65}
+.dev-p .t sup{font-family:var(--ui);font-size:.6em;font-weight:600;color:var(--pri);margin-right:2px;vertical-align:.45em}
+.dev-p .t .add{font-style:italic;color:var(--add)}
+.temas button{display:flex;justify-content:space-between;width:100%;text-align:left;padding:12px 4px;border-bottom:1px solid var(--linha);font-size:15px}
+.temas button small{color:var(--tx2)}
 </style>
 </head>
 <body>
@@ -149,13 +160,15 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
   </section>
   <section class="tela" id="t-meus"></section>
   <section class="tela" id="t-sobre"></section>
+  <section class="tela" id="t-hoje"></section>
 </main>
 
 <nav class="barra" id="barra">
+  <button data-t="hoje"><span>🌅</span>Hoje</button>
   <button data-t="ler" class="on"><span>📖</span>Ler</button>
   <button data-t="livros"><span>📚</span>Livros</button>
   <button data-t="busca"><span>🔍</span>Buscar</button>
-  <button data-t="meus"><span>⭐</span>Meus estudos</button>
+  <button data-t="meus"><span>⭐</span>Estudos</button>
   <button data-t="sobre"><span>ℹ️</span>Sobre</button>
 </nav>
 
@@ -229,6 +242,7 @@ function irPara(t) {
   if (t === 'livros') telaLivros();
   if (t === 'meus') telaMeus();
   if (t === 'sobre') telaSobre();
+  if (t === 'hoje') telaHoje();
   if (t === 'busca') { marcarSeg('#buscaTrad', E.buscaTrad); setTimeout(() => $('#q').focus(), 50); }
   scrollTo(0, 0);
 }
@@ -460,6 +474,54 @@ function importar(f) {
     .catch(() => toast('Arquivo inválido'));
 }
 
+// ---------- devocional: um tema por dia, só com textos bíblicos ----------
+let DEV = null, devOff = 0, devUnico = null, devTemas = false; // devOff = dias antes/depois de hoje
+const INICIO_DEV = new Date(2026, 9, 23); // os temas começam neste dia; seguem em ordem e recomeçam
+const hojeZero = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+function carregarDev() { if (!DEV) DEV = fetch('dados/devocional.json').then(r => r.json()).catch(e => { DEV = null; throw e; }); return DEV; }
+function partesRef(ref) {
+  const [, liv, cap, vs] = ref.match(/^(\w{3}) (\d+):([\d,\-]+)$/);
+  const lista = []; vs.split(',').forEach(p => { const [a, b] = p.split('-').map(Number); for (let v = a; v <= (b || a); v++) lista.push(v); });
+  return {liv, cap: +cap, vs: lista};
+}
+function nomeRef(ref) { const {liv, cap} = partesRef(ref); return LIV[liv].nome + ' ' + cap + ':' + ref.split(':')[1].replace(/,/g, ', '); }
+function blocoTema(d, i, txt, rotulo) {
+  let h = `${rotulo ? `<div class="grupo-tit" style="text-align:center;margin-top:26px">${rotulo}</div>` : ''}<div class="dev-tema">${esc(d.tema)}</div>`;
+  for (const ref of d.refs) {
+    const {liv, cap, vs} = partesRef(ref), caps = (txt[liv] || [])[cap - 1] || [];
+    h += `<div class="dev-p" onclick="abrir('${liv}',${cap},${vs[0]})"><div class="r">${esc(nomeRef(ref))}<span>ler o capítulo ›</span></div><div class="t">` +
+      vs.map(v => caps[v - 1] ? (vs.length > 1 ? `<sup>${v}</sup>` : '') + fmt(caps[v - 1]) : '').join(' ') + '</div></div>';
+  }
+  const lido = (E.devLidos || {})[i];
+  return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button></div>`;
+}
+async function telaHoje() {
+  const el = $('#t-hoje');
+  let dev; try { dev = await carregarDev(); } catch (e) { el.innerHTML = '<div class="aviso">Não consegui abrir o devocional. <button class="btn" onclick="telaHoje()">Tentar de novo</button></div>'; return; }
+  const n = dev.length, txt = await carregar(E.trad);
+  if (devTemas) {
+    el.innerHTML = `<button class="voltar" onclick="devTemas=false;telaHoje()">‹ Voltar</button><div class="grupo-tit">Todos os temas</div><div class="temas">` +
+      dev.map((d, i) => `<button onclick="devTemas=false;devUnico=${i};telaHoje();scrollTo(0,0)">${esc(d.tema)} <small>${(E.devLidos || {})[i] ? '✓' : ''}</small></button>`).join('') + '</div><div style="height:20px"></div>';
+    return;
+  }
+  if (devUnico !== null) {
+    el.innerHTML = `<button class="voltar" onclick="devUnico=null;telaHoje()">‹ Devocional de hoje</button><div class="dev-data">Tema ${devUnico + 1} de ${n}</div>` + blocoTema(dev[devUnico], devUnico, txt) +
+      `<div class="nav-cap"><button onclick="devUnico=(devUnico+${n - 1})%${n};telaHoje();scrollTo(0,0)">‹ Anterior</button><button onclick="devUnico=(devUnico+1)%${n};telaHoje();scrollTo(0,0)">Próximo ›</button></div>`;
+    return;
+  }
+  const k = E.devPorDia || 2;
+  const dia = new Date(hojeZero()); dia.setDate(dia.getDate() + devOff);
+  const dias = Math.round((dia - INICIO_DEV) / 864e5), ini = (((dias * k) % n) + n) % n;
+  let h = `<div class="cfg" style="border:0;padding:14px 0 0"><span style="color:var(--tx2);font-size:14px">Devocionais por dia</span><div class="seg">${[1, 2, 3, 4, 5].map(x => `<button class="${x === k ? 'on' : ''}" onclick="E.devPorDia=${x};salvar();telaHoje()">${x}</button>`).join('')}</div></div>
+    <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>`;
+  for (let x = 0; x < k; x++) { const i = (ini + x) % n; h += blocoTema(dev[i], i, txt, k > 1 ? `${x + 1}º devocional` : ''); }
+  h += `<div class="nav-cap"><button onclick="devOff--;telaHoje();scrollTo(0,0)">‹ Dia anterior</button>${devOff ? `<button onclick="devOff=0;telaHoje();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="devOff++;telaHoje();scrollTo(0,0)">Próximo dia ›</button></div>
+    <div style="text-align:center;margin-bottom:24px"><button class="btn2" onclick="devTemas=true;telaHoje();scrollTo(0,0)">Ver todos os ${n} temas</button></div>
+    <div class="info" style="text-align:center;margin-bottom:24px">${TRAD[E.trad].nome}</div>`;
+  el.innerHTML = h;
+}
+function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
+
 // ---------- sobre e ajustes ----------
 function telaSobre() {
   $('#t-sobre').innerHTML = `<div class="doc">
@@ -490,7 +552,7 @@ function telaSobre() {
   <p>No Antigo Testamento hebraico, o nome de Deus aparece cerca de 7 mil vezes escrito com quatro letras: <b>YHWH</b>. A pronúncia exata se perdeu, porque por respeito os judeus deixaram de pronunciá-lo em voz alta e liam “Adonai” (Senhor). Por isso a maioria das Bíblias escreve <b>SENHOR</b> em letras maiúsculas — isso indica que ali, no original, está o nome. Outras traduções escrevem “Javé”, “Iavé” ou “Jeová”. São escolhas de tradução; o texto original é o mesmo. Quando quiser ver exatamente o que está escrito, use o botão <b>🔤 Original</b>.</p>
 
   <h2>Como funciona o app</h2>
-  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
+  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, os temas do dia (você escolhe quantos por dia, de 1 a 5; são 64 temas e depois recomeça), só com textos da Bíblia, sem comentários de ninguém. Toque num texto para ler o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
   <p><small>Feito para Marcus do Vale.</small></p>
   </div>`;
 }
@@ -502,8 +564,11 @@ document.addEventListener('keydown', e => { if (telaAtual !== 'ler' || e.target.
   try { await Promise.all([contarCaps('blivre'), contarCaps('bpm')]); } catch (e) {}
   if (!LIV[E.livro]) E.livro = 'JOH';
   ler();
+  // primeira vez que abre no dia: mostra o devocional
+  const dia = hojeZero().toDateString();
+  if (E.devVisto !== dia) { E.devVisto = dia; salvar(); irPara('hoje'); }
 })();
-if ('serviceWorker' in navigator) { let rec = false; navigator.serviceWorker.addEventListener('controllerchange', () => { if (rec) return; rec = true; location.reload(); }); addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(r => r.update()).catch(() => {})); }
+if ('serviceWorker' in navigator) { let rec = !navigator.serviceWorker.controller; /* só recarrega quando é atualização, não na 1ª instalação */ navigator.serviceWorker.addEventListener('controllerchange', () => { if (rec) return; rec = true; location.reload(); }); addEventListener('load', () => navigator.serviceWorker.register('sw.js', {updateViaCache: 'none'}).then(r => r.update()).catch(() => {})); }
 </script>
 </body>
 </html>

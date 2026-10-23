@@ -1,6 +1,6 @@
-// Bíblia Sagrada — funciona offline. Versão eab1b15fc7
-const CACHE = 'biblia-eab1b15fc7';
-const BASICO = ['./', 'index.html', 'manifest.webmanifest', 'dados/blivre.json', 'dados/bpm.json', 'icons/icon-192.png', 'icons/icon-512.png'];
+// Bíblia Sagrada — funciona offline. Versão 3282be8f3a
+const CACHE = 'biblia-3282be8f3a';
+const BASICO = ['./', 'index.html', 'manifest.webmanifest', 'dados/blivre.json', 'dados/bpm.json', 'dados/devocional.json', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASICO)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
