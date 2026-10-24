@@ -123,6 +123,14 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .acoes button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px;border-radius:12px;background:var(--bg2);font-size:12px}
 .acoes button span{font-size:20px}
 .folha textarea{min-height:110px;margin:8px 0}
+.vt .g1{background:var(--h1);border-radius:3px}.vt .g2{background:var(--h2);border-radius:3px}.vt .g3{background:var(--h3);border-radius:3px}.vt .g4{background:var(--h4);border-radius:3px}
+.grifo-bar{position:fixed;left:50%;bottom:calc(72px + env(safe-area-inset-bottom));transform:translateX(-50%);z-index:35;background:var(--card);border:1px solid var(--linha);box-shadow:var(--sombra);border-radius:999px;padding:6px 10px;display:none;align-items:center;gap:8px;font-size:13px;color:var(--tx2);white-space:nowrap}
+.grifo-bar.on{display:flex}
+.grifo-bar button{width:32px;height:32px;border-radius:50%;border:2px solid var(--linha);font-size:14px}
+.resumo{margin:14px 0 4px}
+.resumo .r{font-size:13px;font-weight:600;color:var(--pri);margin:0 2px 6px;display:flex;justify-content:space-between}
+.resumo .r small{font-weight:400;color:var(--tx2)}
+.resumo textarea{min-height:90px;resize:none;font-family:var(--serif);font-size:16px;line-height:1.55;overflow:hidden}
 .toast{position:fixed;left:50%;bottom:calc(80px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none}
 .toast.on{opacity:1}
 .carregando{text-align:center;color:var(--tx2);padding:60px 0}
@@ -176,6 +184,9 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 <div class="fundo" id="fundo" onclick="fecharFolha()"></div>
 <div class="folha" id="folha"></div>
 <div class="toast" id="toast"></div>
+<div class="grifo-bar" id="grifoBar"><span>Grifar</span>
+  <button data-g="h1" style="background:var(--h1)"></button><button data-g="h2" style="background:var(--h2)"></button><button data-g="h3" style="background:var(--h3)"></button><button data-g="h4" style="background:var(--h4)"></button>
+  <button data-g="" title="Apagar grifo">✕</button></div>
 
 <script>
 // ---------- livros ----------
@@ -220,6 +231,22 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
 // [palavras entre colchetes] = palavras que o tradutor acrescentou para o português fazer sentido
 const fmt = s => esc(s).replace(/\[([^\]]*)\]/g, '<span class="add">$1</span>');
+// versículo com os grifos feitos com o dedo; posições contadas no texto já sem os [colchetes]
+// E.grifos["blivre|JOH.3.16"] = [[início, fim, 'h1'], ...] — cada tradução tem os seus (o texto é diferente)
+function fmtG(raw, t, k) {
+  const gs = (E.grifos || {})[t + '|' + k] || [], ch = [], add = [];
+  let dentro = false;
+  for (let x = 0; x < raw.length; x++) { const c = raw[x]; if (c === '[') { dentro = true; continue; } if (c === ']') { dentro = false; continue; } ch.push(c); add.push(dentro); }
+  const cor = new Array(ch.length).fill('');
+  for (const [a, b, c] of gs) for (let x = a; x < b && x < ch.length; x++) cor[x] = c;
+  let out = '';
+  for (let i = 0, j; i < ch.length; i = j) {
+    for (j = i; j < ch.length && add[j] === add[i] && cor[j] === cor[i]; j++);
+    const cls = [add[i] ? 'add' : '', cor[i] ? 'g' + cor[i].slice(1) : ''].filter(Boolean).join(' '), tx = esc(ch.slice(i, j).join(''));
+    out += cls ? `<span class="${cls}">${tx}</span>` : tx;
+  }
+  return `<span class="vt" data-t="${t}" data-k="${k}">${out}</span>`;
+}
 const semAcento = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 function toast(m) { const t = $('#toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 1800); }
 function refTxt(liv, cap, ver) { const L = LIV[liv]; return (L ? L.nome : liv) + ' ' + cap + (ver ? ':' + ver : ''); }
@@ -269,7 +296,7 @@ async function ler(opt = {}) {
     const n = Math.max(...caps.map(c => (c[E.cap - 1] || []).length));
     h += '<div class="texto">';
     for (let v = 1; v <= n; v++) {
-      const linhas = trads.map((t, i) => { const tx = (caps[i][E.cap - 1] || [])[v - 1]; return tx ? `<span class="lin"><b>${TRAD[t].sigla}</b>${fmt(tx)}</span>` : ''; }).join('');
+      const linhas = trads.map((t, i) => { const tx = (caps[i][E.cap - 1] || [])[v - 1]; return tx ? `<span class="lin"><b>${TRAD[t].sigla}</b>${fmtG(tx, t, E.livro + '.' + E.cap + '.' + v)}</span>` : ''; }).join('');
       if (!linhas) continue;
       const m = E.marcas[E.livro + '.' + E.cap + '.' + v] || {};
       h += `<span class="v cmp ${m.cor || ''}" data-v="${v}"><sup>${v}</sup>${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}${linhas}</span>`;
@@ -281,7 +308,7 @@ async function ler(opt = {}) {
     vs.forEach((tx, i) => {
       if (!tx) return;
       const v = i + 1, m = E.marcas[E.livro + '.' + E.cap + '.' + v] || {};
-      h += `<span class="v ${m.cor || ''}" data-v="${v}"><sup>${v}</sup>${fmt(tx)}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span> `;
+      h += `<span class="v ${m.cor || ''}" data-v="${v}"><sup>${v}</sup>${fmtG(tx, E.modo, E.livro + '.' + E.cap + '.' + v)}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span> `;
     });
     h += '</div>';
   }
@@ -379,6 +406,48 @@ function original() {
   window.open(`https://biblehub.com/interlinear/${L.hub}/${selV.cap}-${selV.ver}.htm`, '_blank', 'noopener');
 }
 
+// ---------- grifar palavras selecionadas ----------
+let grifoRange = null, grifoT = null;
+document.addEventListener('selectionchange', () => {
+  clearTimeout(grifoT);
+  grifoT = setTimeout(() => {
+    const sel = getSelection();
+    const r = sel.rangeCount && !sel.isCollapsed ? sel.getRangeAt(0) : null;
+    const ok = r && [...document.querySelectorAll('.tela.on .vt')].some(vt => r.intersectsNode(vt));
+    if (ok) { grifoRange = r.cloneRange(); $('#grifoBar').classList.add('on'); }
+    else { grifoRange = null; $('#grifoBar').classList.remove('on'); }
+  }, 120);
+});
+$('#grifoBar').addEventListener('pointerdown', e => e.preventDefault()); // não perde a seleção ao tocar na barra
+$('#grifoBar').addEventListener('mousedown', e => e.preventDefault());
+$('#grifoBar').addEventListener('click', e => { const b = e.target.closest('button'); if (b) grifar(b.dataset.g); });
+function grifar(cor) {
+  const r = grifoRange; if (!r) return;
+  E.grifos = E.grifos || {};
+  for (const vt of document.querySelectorAll('.tela.on .vt')) {
+    if (!r.intersectsNode(vt)) continue;
+    const pos = (node, off) => { const x = document.createRange(); x.setStart(vt, 0); x.setEnd(node, off); return x.toString().length; };
+    let a = vt.contains(r.startContainer) ? pos(r.startContainer, r.startOffset) : 0;
+    let b = vt.contains(r.endContainer) ? pos(r.endContainer, r.endOffset) : vt.textContent.length;
+    const tx = vt.textContent;
+    while (a < b && tx[a] === ' ') a++; while (b > a && tx[b - 1] === ' ') b--; // sem espaços nas pontas
+    if (b <= a) continue;
+    const k = vt.dataset.t + '|' + vt.dataset.k;
+    const lista = (E.grifos[k] || []).flatMap(([x, y, c]) => [...(x < a ? [[x, Math.min(y, a), c]] : []), ...(y > b ? [[Math.max(x, b), y, c]] : [])]);
+    if (cor) lista.push([a, b, cor]);
+    lista.sort((p, q) => p[0] - q[0]);
+    if (lista.length) E.grifos[k] = lista; else delete E.grifos[k];
+  }
+  salvar();
+  getSelection().removeAllRanges(); grifoRange = null; $('#grifoBar').classList.remove('on');
+  redesenhar();
+  if (cor) toast('Grifado');
+}
+function redesenhar() {
+  const y = scrollY, volta = () => scrollTo(0, y);
+  if (telaAtual === 'hoje') telaHoje().then(volta); else if (telaAtual === 'meus') telaMeus().then(volta); else if (telaAtual === 'ler') ler({manterScroll: true});
+}
+
 // ---------- livros ----------
 let livroEscolhido = null, abaLivros = null;
 function telaLivros() {
@@ -447,31 +516,44 @@ function abrirBusca(l, c, v) { if (E.modo !== 'cmp') E.modo = E.trad = E.buscaTr
 let filtroMeus = 'tudo';
 async function telaMeus() {
   const el = $('#t-meus');
-  const itens = Object.entries(E.marcas).map(([k, m]) => { const [l, c, v] = k.split('.'); return {k, l, c: +c, v: +v, m}; })
-    .filter(x => filtroMeus === 'tudo' || (filtroMeus === 'fav' && x.m.fav) || (filtroMeus === 'nota' && x.m.nota) || (filtroMeus === 'cor' && x.m.cor))
+  const porVers = {};
+  for (const [k, m] of Object.entries(E.marcas)) porVers[k] = {k, m, gt: null};
+  for (const gk of Object.keys(E.grifos || {})) { const [t, k] = gk.split('|'); porVers[k] = porVers[k] || {k, m: {}, gt: null}; porVers[k].gt = porVers[k].gt || t; }
+  const itens = Object.values(porVers).map(x => { const [l, c, v] = x.k.split('.'); return {...x, l, c: +c, v: +v}; })
+    .filter(x => LIV[x.l])
+    .filter(x => filtroMeus === 'tudo' || (filtroMeus === 'fav' && x.m.fav) || (filtroMeus === 'nota' && x.m.nota) || (filtroMeus === 'cor' && (x.m.cor || x.gt)))
     .sort((a, b) => (LIV[a.l]?.i - LIV[b.l]?.i) || a.c - b.c || a.v - b.v);
-  let h = '<div class="abas">' + [['tudo', 'Tudo'], ['fav', '⭐ Favoritos'], ['nota', '📝 Notas'], ['cor', '🖍 Destaques']].map(([f, n]) => `<button class="${f === filtroMeus ? 'on' : ''}" onclick="filtroMeus='${f}';telaMeus()">${n}</button>`).join('') + '</div>';
-  if (!itens.length) h += '<div class="vazio">Nada aqui ainda.<br>Enquanto lê, <b>toque num versículo</b> para destacar com cor, favoritar ou escrever uma nota.</div>';
-  const t = E.trad;
-  const d = await carregar(t).catch(() => ({}));
-  const db = t === 'bpm' ? d : await carregar('bpm').catch(() => ({}));
+  let h = '<div class="abas">' + [['tudo', 'Tudo'], ['res', '✍️ Resumos'], ['fav', '⭐ Favoritos'], ['nota', '📝 Notas'], ['cor', '🖍 Destaques']].map(([f, n]) => `<button class="${f === filtroMeus ? 'on' : ''}" onclick="filtroMeus='${f}';telaMeus()">${n}</button>`).join('') + '</div>';
+  const resumos = Object.entries(E.resumos || {}).filter(([, r]) => r && r.tx);
+  const verRes = filtroMeus === 'tudo' || filtroMeus === 'res';
+  const dev = verRes && resumos.length ? await carregarDev().catch(() => []) : [];
+  if (verRes) resumos.sort((a, b) => b[1].em - a[1].em).forEach(([i, r]) => {
+    if (!dev[i]) return;
+    h += `<div class="res" onclick="devUnico=${i};irPara('hoje')"><div class="r">✍️ ${esc(dev[i].tema)} <span style="font-weight:400;color:var(--tx2)">· ${new Date(r.em).toLocaleDateString('pt-BR')}</span></div><div class="n" style="margin-top:2px">${esc(r.tx)}</div></div>`;
+  });
+  if (filtroMeus === 'res') itens.length = 0;
+  if (!itens.length && !(verRes && resumos.length)) h += '<div class="vazio">Nada aqui ainda.<br>Enquanto lê, <b>toque num versículo</b> para destacar, favoritar ou anotar, ou <b>segure o dedo e selecione palavras</b> para grifar.<br>No devocional, escreva em <b>✍️ Meu resumo</b>.</div>';
   for (const x of itens) {
-    const tx = ((d[x.l] || [])[x.c - 1] || [])[x.v - 1] || ((db[x.l] || [])[x.c - 1] || [])[x.v - 1] || '';
-    h += `<div class="res" onclick="abrir('${x.l}',${x.c},${x.v})"><div class="r">${x.m.fav ? '⭐ ' : ''}${x.m.cor ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${x.m.cor});margin-right:4px"></span>` : ''}${esc(refTxt(x.l, x.c, x.v))}</div><div class="t">${fmt(tx)}</div>${x.m.nota ? `<div class="n">${esc(x.m.nota)}</div>` : ''}</div>`;
+    const t = x.gt || E.trad, d = await carregar(t).catch(() => ({}));
+    const tx = ((d[x.l] || [])[x.c - 1] || [])[x.v - 1] || '';
+    h += `<div class="res" onclick="if(!getSelection().toString())abrir('${x.l}',${x.c},${x.v})"><div class="r">${x.m.fav ? '⭐ ' : ''}${x.m.cor ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${x.m.cor});margin-right:4px"></span>` : ''}${esc(refTxt(x.l, x.c, x.v))}${x.gt ? ` <span style="font-weight:400;color:var(--tx2)">(${TRAD[t].sigla})</span>` : ''}</div><div class="t">${fmtG(tx, t, x.k)}</div>${x.m.nota ? `<div class="n">${esc(x.m.nota)}</div>` : ''}</div>`;
   }
-  h += `<div class="aviso" style="margin-top:26px"><b>Cópia de segurança</b><br>Seus destaques e notas ficam guardados só neste celular. Se trocar de aparelho ou limpar o navegador, eles se perdem — de vez em quando, salve uma cópia.<br>
+  h += `<div class="aviso" style="margin-top:26px"><b>Cópia de segurança</b><br>Seus destaques, grifos, notas e resumos ficam guardados só neste celular. Se trocar de aparelho ou limpar o navegador, eles se perdem — de vez em quando, salve uma cópia.<br>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="exportar()">Salvar cópia</button><button class="btn2" onclick="$('#arqImp').click()">Restaurar cópia</button></div>
     <input type="file" id="arqImp" accept=".json,application/json" style="display:none" onchange="importar(this.files[0])"></div><div style="height:20px"></div>`;
   el.innerHTML = h;
 }
 function exportar() {
-  const blob = new Blob([JSON.stringify({app: 'biblia', versao: 1, data: new Date().toISOString(), marcas: E.marcas}, null, 1)], {type: 'application/json'});
+  const blob = new Blob([JSON.stringify({app: 'biblia', versao: 2, data: new Date().toISOString(), marcas: E.marcas, grifos: E.grifos || {}, resumos: E.resumos || {}, devLidos: E.devLidos || {}}, null, 1)], {type: 'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'meus-estudos-biblia-' + new Date().toISOString().slice(0, 10) + '.json'; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
 }
 function importar(f) {
   if (!f) return;
-  f.text().then(s => { const j = JSON.parse(s); if (!j.marcas) throw 0; let n = 0; for (const [k, m] of Object.entries(j.marcas)) { const atual = E.marcas[k]; if (!atual || (m.em || 0) > (atual.em || 0)) { E.marcas[k] = m; n++; } } salvar(); toast(n + ' marcações restauradas'); telaMeus(); })
+  f.text().then(s => { const j = JSON.parse(s); if (!j.marcas) throw 0; let n = 0; for (const [k, m] of Object.entries(j.marcas)) { const atual = E.marcas[k]; if (!atual || (m.em || 0) > (atual.em || 0)) { E.marcas[k] = m; n++; } }
+    E.grifos = E.grifos || {}; for (const [k, g] of Object.entries(j.grifos || {})) if (!E.grifos[k]) { E.grifos[k] = g; n++; }
+    E.resumos = E.resumos || {}; for (const [k, r] of Object.entries(j.resumos || {})) { const a = E.resumos[k]; if (!a || (r.em || 0) > (a.em || 0)) { E.resumos[k] = r; n++; } }
+    E.devLidos = Object.assign({}, j.devLidos || {}, E.devLidos || {}); salvar(); toast(n + ' marcações restauradas'); telaMeus(); })
     .catch(() => toast('Arquivo inválido'));
 }
 
@@ -493,10 +575,11 @@ function blocoTema(d, i, txt, rotulo) {
     // tocar no versículo = marcar (cor, favorito, nota); o número no fim abre o capítulo
     h += `<div class="dev-p"><div class="r">${esc(nomeRef(ref))}</div><div class="t">` +
       vs.map(v => { if (!caps[v - 1]) return ''; const m = E.marcas[liv + '.' + cap + '.' + v] || {};
-        return `<span class="v dv ${m.cor || ''}" data-l="${liv}" data-c="${cap}" data-v="${v}">${vs.length > 1 ? `<sup>${v}</sup>` : ''}${fmt(caps[v - 1])}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span>`; }).join(' ') +
+        return `<span class="v dv ${m.cor || ''}" data-l="${liv}" data-c="${cap}" data-v="${v}">${vs.length > 1 ? `<sup>${v}</sup>` : ''}${fmtG(caps[v - 1], E.trad, liv + '.' + cap + '.' + v)}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span>`; }).join(' ') +
       ` <button class="ir-cap" onclick="abrir('${liv}',${cap},${vs[0]})" title="Ler o capítulo inteiro">${LIV[liv].abr} ${cap}:${vs[0]} ›</button></div></div>`;
   }
-  const lido = (E.devLidos || {})[i];
+  const lido = (E.devLidos || {})[i], res = (E.resumos || {})[i];
+  h += `<div class="resumo"><div class="r">✍️ Meu resumo<small id="rs${i}">${res && res.tx ? 'salvo' : ''}</small></div><textarea data-i="${i}" placeholder="Escreva com suas palavras o que você aprendeu e como vai usar isso na sua vida…">${esc((res && res.tx) || '')}</textarea></div>`;
   return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button></div>`;
 }
 async function telaHoje() {
@@ -511,6 +594,7 @@ async function telaHoje() {
   if (devUnico !== null) {
     el.innerHTML = `<button class="voltar" onclick="devUnico=null;telaHoje()">‹ Devocional de hoje</button><div class="dev-data">Tema ${devUnico + 1} de ${n}</div>` + blocoTema(dev[devUnico], devUnico, txt) +
       `<div class="nav-cap"><button onclick="devUnico=(devUnico+${n - 1})%${n};telaHoje();scrollTo(0,0)">‹ Anterior</button><button onclick="devUnico=(devUnico+1)%${n};telaHoje();scrollTo(0,0)">Próximo ›</button></div>`;
+    el.querySelectorAll('textarea[data-i]').forEach(crescer);
     return;
   }
   const k = E.devPorDia || 2;
@@ -523,12 +607,21 @@ async function telaHoje() {
     <div style="text-align:center;margin-bottom:24px"><button class="btn2" onclick="devTemas=true;telaHoje();scrollTo(0,0)">Ver todos os ${n} temas</button></div>
     <div class="info" style="text-align:center;margin-bottom:24px">${TRAD[E.trad].nome}</div>`;
   el.innerHTML = h;
+  el.querySelectorAll('textarea[data-i]').forEach(crescer);
 }
 $('#t-hoje').addEventListener('click', e => {
   const v = e.target.closest('.dv'); if (!v || window.getSelection().toString()) return;
   abrirFolha(v.dataset.l, +v.dataset.c, +v.dataset.v);
   v.classList.add('sel');
 });
+// resumo: salva enquanto escreve
+$('#t-hoje').addEventListener('input', e => {
+  const ta = e.target.closest('textarea[data-i]'); if (!ta) return;
+  const i = ta.dataset.i; E.resumos = E.resumos || {};
+  if (ta.value.trim()) E.resumos[i] = {tx: ta.value, em: Date.now()}; else delete E.resumos[i];
+  salvar(); crescer(ta); const s = $('#rs' + i); if (s) s.textContent = ta.value.trim() ? 'salvo' : '';
+});
+function crescer(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
 function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
 
 // ---------- sobre e ajustes ----------
@@ -561,7 +654,7 @@ function telaSobre() {
   <p>No Antigo Testamento hebraico, o nome de Deus aparece cerca de 7 mil vezes escrito com quatro letras: <b>YHWH</b>. A pronúncia exata se perdeu, porque por respeito os judeus deixaram de pronunciá-lo em voz alta e liam “Adonai” (Senhor). Por isso a maioria das Bíblias escreve <b>SENHOR</b> em letras maiúsculas — isso indica que ali, no original, está o nome. Outras traduções escrevem “Javé”, “Iavé” ou “Jeová”. São escolhas de tradução; o texto original é o mesmo. Quando quiser ver exatamente o que está escrito, use o botão <b>🔤 Original</b>.</p>
 
   <h2>Como funciona o app</h2>
-  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, os temas do dia (você escolhe quantos por dia, de 1 a 5; são 64 temas e depois recomeça), só com textos da Bíblia, sem comentários de ninguém. Toque num texto para ler o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
+  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Para <b>grifar só algumas palavras</b>, segure o dedo sobre a palavra, arraste para escolher o trecho e toque numa cor na barra que aparece embaixo (✕ apaga o grifo).<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, os temas do dia (você escolhe quantos por dia, de 1 a 5; são 64 temas e depois recomeça), só com textos da Bíblia, sem comentários de ninguém. Embaixo de cada tema há o espaço <b>✍️ Meu resumo</b> para você escrever com suas palavras; ele salva sozinho. O número no fim de cada texto abre o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
   <p><small>Feito para Marcus do Vale.</small></p>
   </div>`;
 }
