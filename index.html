@@ -135,6 +135,8 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .toast.on{opacity:1}
 .carregando{text-align:center;color:var(--tx2);padding:60px 0}
 /* devocional */
+.dev-nome{text-align:center;font-family:var(--serif);font-size:17px;color:var(--tx2);margin-top:18px}.dev-nome b{color:var(--pri);font-weight:600}
+.img-prev{display:block;max-width:100%;max-height:52vh;margin:10px auto;border-radius:10px;box-shadow:var(--sombra)}
 .dev-data{text-align:center;color:var(--tx2);font-size:13px;margin-top:20px;text-transform:capitalize}
 .dev-tema{font-family:var(--serif);font-size:26px;font-weight:600;text-align:center;margin:6px 0 18px;line-height:1.3}
 .dev-p{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin:0 0 10px}
@@ -580,7 +582,7 @@ function blocoTema(d, i, txt, rotulo) {
   }
   const lido = (E.devLidos || {})[i], res = (E.resumos || {})[i];
   h += `<div class="resumo"><div class="r">✍️ Meu resumo<small id="rs${i}">${res && res.tx ? 'salvo' : ''}</small></div><textarea data-i="${i}" placeholder="Escreva com suas palavras o que você aprendeu e como vai usar isso na sua vida…">${esc((res && res.tx) || '')}</textarea></div>`;
-  return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button></div>`;
+  return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button> <button class="btn2" onclick="abrirImagem(${i})">📸 Imagem p/ Instagram</button></div>`;
 }
 async function telaHoje() {
   const el = $('#t-hoje');
@@ -600,7 +602,8 @@ async function telaHoje() {
   const k = E.devPorDia || 2;
   const dia = new Date(hojeZero()); dia.setDate(dia.getDate() + devOff);
   const dias = Math.round((dia - INICIO_DEV) / 864e5), ini = (((dias * k) % n) + n) % n;
-  let h = `<div class="cfg" style="border:0;padding:14px 0 0"><span style="color:var(--tx2);font-size:14px">Devocionais por dia</span><div class="seg">${[1, 2, 3, 4, 5].map(x => `<button class="${x === k ? 'on' : ''}" onclick="E.devPorDia=${x};salvar();telaHoje()">${x}</button>`).join('')}</div></div>
+  let h = `<div class="dev-nome">Devocional de <b>${esc(nomeUsuario())}</b></div>
+    <div class="cfg" style="border:0;padding:8px 0 0"><span style="color:var(--tx2);font-size:14px">Devocionais por dia</span><div class="seg">${[1, 2, 3, 4, 5].map(x => `<button class="${x === k ? 'on' : ''}" onclick="E.devPorDia=${x};salvar();telaHoje()">${x}</button>`).join('')}</div></div>
     <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>`;
   for (let x = 0; x < k; x++) { const i = (ini + x) % n; h += blocoTema(dev[i], i, txt, k > 1 ? `${x + 1}º devocional` : ''); }
   h += `<div class="nav-cap"><button onclick="devOff--;telaHoje();scrollTo(0,0)">‹ Dia anterior</button>${devOff ? `<button onclick="devOff=0;telaHoje();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="devOff++;telaHoje();scrollTo(0,0)">Próximo dia ›</button></div>
@@ -624,11 +627,122 @@ $('#t-hoje').addEventListener('input', e => {
 function crescer(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
 function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
 
+// ---------- imagem do devocional para Instagram / TikTok ----------
+const nomeUsuario = () => E.nome || 'Marcus do Vale';
+let IMG = {i: 0, fmt: 'post', ref: 0, resumo: false};
+async function abrirImagem(i) {
+  const dev = await carregarDev();
+  // começa pelo primeiro texto que cabe bem numa imagem
+  const txt = await carregar(E.trad);
+  const tam = ref => { const {liv, cap, vs} = partesRef(ref); return vs.map(v => ((txt[liv] || [])[cap - 1] || [])[v - 1] || '').join(' ').length; };
+  const curto = dev[i].refs.findIndex(r => tam(r) <= 420);
+  IMG = {i, fmt: IMG.fmt, ref: curto < 0 ? 0 : curto, resumo: false};
+  desenharFolhaImagem();
+  $('#fundo').classList.add('on'); $('#folha').classList.add('on');
+}
+async function desenharFolhaImagem() {
+  const dev = await carregarDev(), d = dev[IMG.i], res = (E.resumos || {})[IMG.i];
+  $('#folha').innerHTML = `<div class="alca"></div><div class="fr">📸 Imagem para Instagram / TikTok</div>
+    <div class="seg" style="margin:6px 0">${[['post', 'Post (4:5)'], ['story', 'Stories / TikTok (9:16)']].map(([f, n]) => `<button class="${IMG.fmt === f ? 'on' : ''}" onclick="IMG.fmt='${f}';desenharFolhaImagem()">${n}</button>`).join('')}</div>
+    <div class="info">Texto da imagem:</div>
+    <div class="seg" style="margin:4px 0">${d.refs.map((r, k) => `<button class="${IMG.ref === k ? 'on' : ''}" onclick="IMG.ref=${k};desenharFolhaImagem()">${esc(LIV[partesRef(r).liv].abr + ' ' + r.split(' ')[1])}</button>`).join('')}</div>
+    ${res && res.tx ? `<label style="display:flex;gap:8px;align-items:center;margin:8px 2px;font-size:14px"><input type="checkbox" style="width:auto" ${IMG.resumo ? 'checked' : ''} onchange="IMG.resumo=this.checked;desenharFolhaImagem()"> Incluir meu resumo</label>` : ''}
+    <img class="img-prev" id="imgPrev" alt="Prévia da imagem">
+    <div class="info" id="imgAviso" style="text-align:center"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn" onclick="compartilharImagem()">Compartilhar</button><button class="btn2" onclick="salvarImagem()">Salvar imagem</button><button class="btn2" onclick="fecharFolha()">Fechar</button></div>`;
+  const cv = await gerarImagem();
+  $('#imgPrev').src = cv.toDataURL('image/jpeg', .85);
+}
+function quebrar(ctx, texto, larg) {
+  const linhas = []; let atual = '';
+  for (const p of texto.split(/\s+/).filter(Boolean)) { const t = atual ? atual + ' ' + p : p; if (ctx.measureText(t).width > larg && atual) { linhas.push(atual); atual = p; } else atual = t; }
+  if (atual) linhas.push(atual);
+  return linhas;
+}
+async function gerarImagem() {
+  const dev = await carregarDev(), d = dev[IMG.i], t = E.trad, txt = await carregar(t);
+  const story = IMG.fmt === 'story', W = 1080, H = story ? 1920 : 1350;
+  try { await Promise.all(['400 40px Literata', '600 40px Literata', 'italic 400 40px Literata', '600 30px Inter'].map(f => document.fonts.load(f))); } catch (e) {}
+  const SERIF = 'Literata, Georgia, serif', UI = 'Inter, system-ui, sans-serif';
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+  // fundo
+  const g = c.createLinearGradient(0, 0, W * .4, H); g.addColorStop(0, '#6b4424'); g.addColorStop(1, '#24150b'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const luz = c.createRadialGradient(W * .5, H * .18, 10, W * .5, H * .18, W * .9); luz.addColorStop(0, 'rgba(255,220,160,.18)'); luz.addColorStop(1, 'rgba(255,220,160,0)'); c.fillStyle = luz; c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(224,183,122,.35)'; c.lineWidth = 2; c.strokeRect(40, 40, W - 80, H - 80);
+  const OURO = '#e3bb80', CREME = '#fbf3e4', M = 110, LARG = W - 2 * M;
+  // texto bíblico: versículos inteiros; se não couber, tira versículos do fim (a referência acompanha)
+  const {liv, cap, vs} = partesRef(d.refs[IMG.ref]);
+  const versos = vs.map(v => [v, (((txt[liv] || [])[cap - 1] || [])[v - 1] || '').replace(/[\[\]]/g, '')]).filter(x => x[1]);
+  const resumo = IMG.resumo && (E.resumos || {})[IMG.i] ? E.resumos[IMG.i].tx.trim() : '';
+  const topo = story ? 260 : 120, base = story ? H - 300 : H - 110; // stories: deixa livre onde o Instagram põe os botões
+  const tamTema = story ? 72 : 62;
+  let usados = versos.length, fs = 0, plano = null;
+  while (usados > 0) {
+    const corpo = '“' + versos.slice(0, usados).map(x => x[1]).join(' ') + '”';
+    for (fs = story ? 60 : 52; fs >= (story ? 44 : 38); fs -= 2) { // letra mínima legível no celular; se não couber, mostra menos versículos
+      c.font = `600 ${tamTema}px ${SERIF}`; const lt = quebrar(c, d.tema, LARG);
+      c.font = `400 ${fs}px ${SERIF}`; const lc = quebrar(c, corpo, LARG);
+      let lr = []; const fr = Math.round(fs * .72);
+      if (resumo) { c.font = `italic 400 ${fr}px ${SERIF}`; lr = quebrar(c, resumo, LARG - 40); }
+      const alt = 30 + 22 + 40 + lt.length * tamTema * 1.22 + 50 + lc.length * fs * 1.45 + 30 + 40 + (lr.length ? 60 + 30 + lr.length * fr * 1.45 : 0) + 70 + 44 + 30;
+      if (alt <= base - topo) { plano = {lt, lc, lr, fs, fr, alt}; break; }
+    }
+    if (plano) break;
+    if (usados === 1) break;
+    usados--;
+  }
+  if (!plano) { // um único versículo muito longo: corta com reticências
+    fs = 30; c.font = `400 ${fs}px ${SERIF}`; let lc = quebrar(c, '“' + versos[0][1] + '”', LARG); c.font = `600 ${tamTema}px ${SERIF}`; const lt = quebrar(c, d.tema, LARG);
+    const cabe = Math.floor((base - topo - 400 - lt.length * tamTema * 1.22) / (fs * 1.45)); lc = lc.slice(0, cabe); lc[lc.length - 1] += '…';
+    plano = {lt, lc, lr: [], fs, fr: 0, alt: base - topo};
+  }
+  const ultimo = versos[usados - 1] ? versos[usados - 1][0] : vs[0];
+  const refTexto = `${LIV[liv].nome} ${cap}:${vs[0]}${ultimo !== vs[0] ? '-' + ultimo : ''}`;
+  // desenho, centralizado na área livre
+  let y = topo + Math.max(0, (base - topo - plano.alt) / 2);
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  c.fillStyle = OURO; c.font = `600 26px ${UI}`; espacado(c, 'DEVOCIONAL DO DIA', W / 2, y, 6); y += 30 + 22;
+  c.fillStyle = 'rgba(251,243,228,.7)'; c.font = `400 26px ${UI}`; c.fillText(new Date().toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'}), W / 2, y); y += 40;
+  c.fillStyle = CREME; c.font = `600 ${tamTema}px ${SERIF}`; for (const l of plano.lt) { c.fillText(l, W / 2, y); y += tamTema * 1.22; }
+  y += 18; c.fillStyle = OURO; c.fillRect(W / 2 - 40, y, 80, 3); y += 32;
+  c.fillStyle = CREME; c.font = `400 ${plano.fs}px ${SERIF}`; for (const l of plano.lc) { c.fillText(l, W / 2, y); y += plano.fs * 1.45; }
+  y += 30; c.fillStyle = OURO; c.font = `600 32px ${UI}`; c.fillText(refTexto, W / 2, y); y += 40;
+  if (plano.lr.length) {
+    y += 30; c.fillStyle = 'rgba(227,187,128,.85)'; c.font = `600 22px ${UI}`; espacado(c, 'O QUE EU APRENDI', W / 2, y, 4); y += 30;
+    c.fillStyle = 'rgba(251,243,228,.88)'; c.font = `italic 400 ${plano.fr}px ${SERIF}`; for (const l of plano.lr) { c.fillText(l, W / 2, y); y += plano.fr * 1.45; }
+  }
+  // assinatura e crédito da tradução
+  y = Math.max(y + 50, base - 74);
+  c.fillStyle = CREME; c.font = `italic 400 40px ${SERIF}`; c.fillText(nomeUsuario(), W / 2, y); y += 52;
+  c.fillStyle = 'rgba(251,243,228,.55)'; c.font = `400 20px ${UI}`; c.fillText(t === 'blivre' ? 'Texto: Bíblia Livre (BLIVRE) · CC BY 4.0' : 'Texto: Bíblia Portuguesa Mundial · domínio público', W / 2, y);
+  IMG.aviso = usados < versos.length ? `O texto completo não cabe na imagem: ela mostra ${refTexto}.` : '';
+  const av = $('#imgAviso'); if (av) av.textContent = IMG.aviso;
+  return cv;
+}
+function espacado(c, t, x, y, esp) { // letras espaçadas, centralizadas
+  const larg = [...t].reduce((s, ch) => s + c.measureText(ch).width + esp, -esp); let px = x - larg / 2;
+  c.textAlign = 'left'; for (const ch of t) { c.fillText(ch, px, y); px += c.measureText(ch).width + esp; } c.textAlign = 'center';
+}
+async function arquivoImagem() {
+  const cv = await gerarImagem(), dev = await carregarDev();
+  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
+  const nome = 'devocional-' + semAcento(dev[IMG.i].tema).replace(/[^a-z0-9]+/g, '-') + (IMG.fmt === 'story' ? '-stories' : '-post') + '.png';
+  return new File([blob], nome, {type: 'image/png'});
+}
+async function compartilharImagem() {
+  const f = await arquivoImagem();
+  if (navigator.canShare && navigator.canShare({files: [f]})) { try { await navigator.share({files: [f]}); } catch (e) {} }
+  else { baixar(f); toast('Imagem salva — abra o Instagram e escolha da galeria'); }
+}
+async function salvarImagem() { baixar(await arquivoImagem()); toast('Imagem salva'); }
+function baixar(f) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
+
 // ---------- sobre e ajustes ----------
 function telaSobre() {
   $('#t-sobre').innerHTML = `<div class="doc">
   <h2>Ajustes</h2>
   <div class="cfg"><span>Tamanho da letra</span><div class="seg"><button onclick="letra(-1)">A−</button><button class="on" style="min-width:44px">${E.fs}</button><button onclick="letra(1)">A+</button></div></div>
+  <div class="cfg"><span>Seu nome<br><small style="color:var(--tx2)">aparece no devocional e nas imagens</small></span><input style="max-width:190px" value="${esc(nomeUsuario())}" onchange="E.nome=this.value.trim()||'Marcus do Vale';salvar();toast('Nome salvo')"></div>
   <div class="cfg"><span>Aparência</span><div class="seg" id="segTema">${[['', 'Auto'], ['light', 'Clara'], ['sepia', 'Sépia'], ['dark', 'Escura']].map(([v, n]) => `<button class="${E.tema === v ? 'on' : ''}" onclick="E.tema='${v}';salvar();aplicarTema();telaSobre()">${n}</button>`).join('')}</div></div>
 
   <h2>Por que esta Bíblia</h2>
