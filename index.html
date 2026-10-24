@@ -140,6 +140,12 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .carregando{text-align:center;color:var(--tx2);padding:60px 0}
 /* devocional */
 .dev-nome{text-align:center;font-family:var(--serif);font-size:17px;color:var(--tx2);margin-top:18px}.dev-nome b{color:var(--pri);font-weight:600}
+.img-lista{max-height:32vh;overflow:auto;border:1px solid var(--linha);border-radius:10px;padding:4px 10px;margin:6px 0}
+.img-ref{font-size:12px;font-weight:600;color:var(--pri);margin:10px 0 2px}
+.img-v{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px solid var(--linha);font-family:var(--serif);font-size:15px;line-height:1.45}
+.img-v:last-child{border-bottom:0}
+.img-v input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:var(--pri)}
+.img-v b{font-family:var(--ui);font-size:11px;color:var(--pri)}
 .img-prev{display:block;max-width:100%;max-height:52vh;margin:10px auto;border-radius:10px;box-shadow:var(--sombra)}
 .nuvem{font-size:13px;color:var(--tx2);text-align:center;margin:6px 0 0;line-height:1.5}.nuvem button:not(.btn){color:var(--pri);font-weight:600;text-decoration:underline;padding:2px 4px}
 .nuvem-box{background:var(--bg2);border-radius:12px;padding:12px 14px;margin:14px 0 4px;font-size:14px;line-height:1.5}
@@ -639,29 +645,56 @@ function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete
 
 // ---------- imagem do devocional para Instagram / TikTok ----------
 const nomeUsuario = () => E.nome || 'Marcus do Vale';
-let IMG = {i: 0, fmt: 'post', ref: 0, resumo: false};
+// IMG.sel = versículos que o Marcus marcou para a imagem ("MAR.7.6"); fica guardado por tema neste aparelho
+let IMG = {i: 0, fmt: 'post', sel: [], resumo: false};
 async function abrirImagem(i) {
-  const dev = await carregarDev();
-  // começa pelo primeiro texto que cabe bem numa imagem
-  const txt = await carregar(E.trad);
-  const tam = ref => { const {liv, cap, vs} = partesRef(ref); return vs.map(v => ((txt[liv] || [])[cap - 1] || [])[v - 1] || '').join(' ').length; };
-  const curto = dev[i].refs.findIndex(r => tam(r) <= 420);
-  IMG = {i, fmt: IMG.fmt, ref: curto < 0 ? 0 : curto, resumo: false};
-  desenharFolhaImagem();
+  let sel = []; try { sel = JSON.parse(localStorage.getItem('biblia_img_' + i) || '[]'); } catch (e) {}
+  IMG = {i, fmt: IMG.fmt, sel, resumo: false};
+  await desenharFolhaImagem();
   $('#fundo').classList.add('on'); $('#folha').classList.add('on');
 }
 async function desenharFolhaImagem() {
-  const dev = await carregarDev(), d = dev[IMG.i], res = (E.resumos || {})[IMG.i];
+  const dev = await carregarDev(), d = dev[IMG.i], res = (E.resumos || {})[IMG.i], txt = await carregar(E.trad);
+  const lista = d.refs.map(r => {
+    const {liv, cap, vs} = partesRef(r);
+    return `<div class="img-ref">${esc(nomeRef(r))}</div>` + vs.map(v => {
+      const k = liv + '.' + cap + '.' + v, tx = (((txt[liv] || [])[cap - 1] || [])[v - 1] || '').replace(/[\[\]]/g, '');
+      return tx ? `<label class="img-v"><input type="checkbox" data-k="${k}" ${IMG.sel.includes(k) ? 'checked' : ''} onchange="marcarImg('${k}',this.checked)"><span><b>${v}</b> ${esc(tx)}</span></label>` : '';
+    }).join('');
+  }).join('');
   $('#folha').innerHTML = `<div class="alca"></div><div class="fr">📸 Imagem para Instagram / TikTok</div>
     <div class="seg" style="margin:6px 0">${[['post', 'Post (4:5)'], ['story', 'Stories / TikTok (9:16)']].map(([f, n]) => `<button class="${IMG.fmt === f ? 'on' : ''}" onclick="IMG.fmt='${f}';desenharFolhaImagem()">${n}</button>`).join('')}</div>
-    <div class="info">Texto da imagem:</div>
-    <div class="seg" style="margin:4px 0">${d.refs.map((r, k) => `<button class="${IMG.ref === k ? 'on' : ''}" onclick="IMG.ref=${k};desenharFolhaImagem()">${esc(LIV[partesRef(r).liv].abr + ' ' + r.split(' ')[1])}</button>`).join('')}</div>
-    ${res && res.tx ? `<label style="display:flex;gap:8px;align-items:center;margin:8px 2px;font-size:14px"><input type="checkbox" style="width:auto" ${IMG.resumo ? 'checked' : ''} onchange="IMG.resumo=this.checked;desenharFolhaImagem()"> Incluir meu resumo</label>` : ''}
+    <div class="info"><b>Marque os versículos que vão na imagem:</b></div>
+    <div class="img-lista">${lista}</div>
+    ${res && res.tx ? `<label style="display:flex;gap:8px;align-items:center;margin:8px 2px;font-size:14px"><input type="checkbox" style="width:auto" ${IMG.resumo ? 'checked' : ''} onchange="IMG.resumo=this.checked;atualizarPrevia()"> Incluir meu resumo</label>` : ''}
+    <div id="imgVazio" class="aviso" style="text-align:center;display:none">Marque pelo menos um versículo acima.</div>
     <img class="img-prev" id="imgPrev" alt="Prévia da imagem">
-    <div class="info" id="imgAviso" style="text-align:center"></div>
-    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn" onclick="compartilharImagem()">Compartilhar</button><button class="btn2" onclick="salvarImagem()">Salvar imagem</button><button class="btn2" onclick="fecharFolha()">Fechar</button></div>`;
+    <div class="info" id="imgAviso" style="text-align:center;color:#b3261e"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn" id="btShare" onclick="compartilharImagem()">Compartilhar</button><button class="btn2" id="btSalvar" onclick="salvarImagem()">Salvar imagem</button><button class="btn2" onclick="fecharFolha()">Fechar</button></div>`;
+  await atualizarPrevia();
+}
+function marcarImg(k, on) {
+  IMG.sel = IMG.sel.filter(x => x !== k); if (on) IMG.sel.push(k);
+  try { localStorage.setItem('biblia_img_' + IMG.i, JSON.stringify(IMG.sel)); } catch (e) {}
+  atualizarPrevia();
+}
+async function atualizarPrevia() {
+  const vazio = !IMG.sel.length;
+  $('#imgVazio').style.display = vazio ? 'block' : 'none'; $('#imgPrev').style.display = vazio ? 'none' : 'block';
+  $('#btShare').disabled = $('#btSalvar').disabled = vazio; $('#imgAviso').textContent = '';
+  if (vazio) return;
   const cv = await gerarImagem();
   $('#imgPrev').src = cv.toDataURL('image/jpeg', .85);
+}
+// "MAR.7.6","MAR.7.7","MAR.7.8","COL.2.8" → "Marcos 7:6-8; Colossenses 2:8"
+function refsDe(ks) {
+  const grupos = [];
+  for (const k of ks) { const [l, c, v] = k.split('.'); const g = grupos[grupos.length - 1]; if (g && g.l === l && g.c === c) g.vs.push(+v); else grupos.push({l, c, vs: [+v]}); }
+  return grupos.map(g => {
+    const partes = []; let a = g.vs[0], b = a;
+    for (const v of g.vs.slice(1).concat([null])) { if (v === b + 1) b = v; else { partes.push(a === b ? '' + a : a + '-' + b); a = b = v; } }
+    return `${LIV[g.l].nome} ${g.c}:${partes.join(', ')}`;
+  }).join('; ');
 }
 function quebrar(ctx, texto, larg) {
   const linhas = []; let atual = '';
@@ -680,34 +713,32 @@ async function gerarImagem() {
   const luz = c.createRadialGradient(W * .5, H * .18, 10, W * .5, H * .18, W * .9); luz.addColorStop(0, 'rgba(255,220,160,.18)'); luz.addColorStop(1, 'rgba(255,220,160,0)'); c.fillStyle = luz; c.fillRect(0, 0, W, H);
   c.strokeStyle = 'rgba(224,183,122,.35)'; c.lineWidth = 2; c.strokeRect(40, 40, W - 80, H - 80);
   const OURO = '#e3bb80', CREME = '#fbf3e4', M = 110, LARG = W - 2 * M;
-  // texto bíblico: versículos inteiros; se não couber, tira versículos do fim (a referência acompanha)
-  const {liv, cap, vs} = partesRef(d.refs[IMG.ref]);
-  const versos = vs.map(v => [v, (((txt[liv] || [])[cap - 1] || [])[v - 1] || '').replace(/[\[\]]/g, '')]).filter(x => x[1]);
+  // texto bíblico: exatamente os versículos que o Marcus marcou, na ordem do devocional
+  const ordem = d.refs.flatMap(r => { const {liv, cap, vs} = partesRef(r); return vs.map(v => liv + '.' + cap + '.' + v); });
+  const ks = ordem.filter(k => IMG.sel.includes(k));
+  const versos = ks.map(k => { const [l, cp, v] = k.split('.'); return (((txt[l] || [])[cp - 1] || [])[v - 1] || '').replace(/[\[\]]/g, ''); }).filter(Boolean);
+  const corpo = '“' + versos.join(' ') + '”';
   const resumo = IMG.resumo && (E.resumos || {})[IMG.i] ? E.resumos[IMG.i].tx.trim() : '';
   const topo = story ? 260 : 120, base = story ? H - 300 : H - 110; // stories: deixa livre onde o Instagram põe os botões
-  const tamTema = story ? 72 : 62;
-  let usados = versos.length, fs = 0, plano = null;
-  while (usados > 0) {
-    const corpo = '“' + versos.slice(0, usados).map(x => x[1]).join(' ') + '”';
-    for (fs = story ? 60 : 52; fs >= (story ? 44 : 38); fs -= 2) { // letra mínima legível no celular; se não couber, mostra menos versículos
-      c.font = `600 ${tamTema}px ${SERIF}`; const lt = quebrar(c, d.tema, LARG);
-      c.font = `400 ${fs}px ${SERIF}`; const lc = quebrar(c, corpo, LARG);
-      let lr = []; const fr = Math.round(fs * .72);
-      if (resumo) { c.font = `italic 400 ${fr}px ${SERIF}`; lr = quebrar(c, resumo, LARG - 40); }
-      const alt = 30 + 22 + 40 + lt.length * tamTema * 1.22 + 50 + lc.length * fs * 1.45 + 30 + 40 + (lr.length ? 60 + 30 + lr.length * fr * 1.45 : 0) + 70 + 44 + 30;
-      if (alt <= base - topo) { plano = {lt, lc, lr, fs, fr, alt}; break; }
-    }
-    if (plano) break;
-    if (usados === 1) break;
-    usados--;
+  const tamTema = story ? 72 : 62, alturaDe = (lt, lc, lr, fs, fr) => 30 + 22 + 40 + lt.length * tamTema * 1.22 + 50 + lc.length * fs * 1.45 + 30 + 40 + (lr.length ? 60 + 30 + lr.length * fr * 1.45 : 0) + 70 + 44 + 30;
+  let plano = null, cortado = false;
+  for (let fs = story ? 60 : 52; fs >= (story ? 44 : 38); fs -= 2) { // diminui a letra até caber, sem ficar ilegível no celular
+    c.font = `600 ${tamTema}px ${SERIF}`; const lt = quebrar(c, d.tema, LARG);
+    c.font = `400 ${fs}px ${SERIF}`; const lc = quebrar(c, corpo, LARG);
+    let lr = []; const fr = Math.round(fs * .72);
+    if (resumo) { c.font = `italic 400 ${fr}px ${SERIF}`; lr = quebrar(c, resumo, LARG - 40); }
+    const alt = alturaDe(lt, lc, lr, fs, fr);
+    plano = {lt, lc, lr, fs, fr, alt};
+    if (alt <= base - topo) break;
   }
-  if (!plano) { // um único versículo muito longo: corta com reticências
-    fs = 30; c.font = `400 ${fs}px ${SERIF}`; let lc = quebrar(c, '“' + versos[0][1] + '”', LARG); c.font = `600 ${tamTema}px ${SERIF}`; const lt = quebrar(c, d.tema, LARG);
-    const cabe = Math.floor((base - topo - 400 - lt.length * tamTema * 1.22) / (fs * 1.45)); lc = lc.slice(0, cabe); lc[lc.length - 1] += '…';
-    plano = {lt, lc, lr: [], fs, fr: 0, alt: base - topo};
+  if (plano.alt > base - topo) { // mesmo na letra mínima não coube: corta e avisa para desmarcar algo
+    cortado = true;
+    const sem = alturaDe(plano.lt, [], plano.lr, plano.fs, plano.fr);
+    const cabe = Math.max(1, Math.floor((base - topo - sem) / (plano.fs * 1.45)));
+    plano.lc = plano.lc.slice(0, cabe); plano.lc[plano.lc.length - 1] += '…';
+    plano.alt = alturaDe(plano.lt, plano.lc, plano.lr, plano.fs, plano.fr);
   }
-  const ultimo = versos[usados - 1] ? versos[usados - 1][0] : vs[0];
-  const refTexto = `${LIV[liv].nome} ${cap}:${vs[0]}${ultimo !== vs[0] ? '-' + ultimo : ''}`;
+  const refTexto = refsDe(ks);
   // desenho, centralizado na área livre
   let y = topo + Math.max(0, (base - topo - plano.alt) / 2);
   c.textAlign = 'center'; c.textBaseline = 'top';
@@ -725,7 +756,7 @@ async function gerarImagem() {
   y = Math.max(y + 50, base - 74);
   c.fillStyle = CREME; c.font = `italic 400 40px ${SERIF}`; c.fillText(nomeUsuario(), W / 2, y); y += 52;
   c.fillStyle = 'rgba(251,243,228,.55)'; c.font = `400 20px ${UI}`; c.fillText(t === 'blivre' ? 'Texto: Bíblia Livre (BLIVRE) · CC BY 4.0' : 'Texto: Bíblia Portuguesa Mundial · domínio público', W / 2, y);
-  IMG.aviso = usados < versos.length ? `O texto completo não cabe na imagem: ela mostra ${refTexto}.` : '';
+  IMG.aviso = cortado ? (resumo ? 'O texto marcado não cabe inteiro: desmarque algum versículo, tire o resumo ou use Stories.' : 'O texto marcado não cabe inteiro: desmarque algum versículo ou use Stories.') : '';
   const av = $('#imgAviso'); if (av) av.textContent = IMG.aviso;
   return cv;
 }
