@@ -135,6 +135,7 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .dev-p .t{font-family:var(--serif);font-size:calc(var(--fs,19px) - 2px);line-height:1.65}
 .dev-p .t sup{font-family:var(--ui);font-size:.6em;font-weight:600;color:var(--pri);margin-right:2px;vertical-align:.45em}
 .dev-p .t .add{font-style:italic;color:var(--add)}
+.ir-cap{display:inline-block;font-family:var(--ui);font-size:12px;font-weight:600;color:var(--pri);background:var(--bg2);border-radius:999px;padding:3px 10px;margin-left:4px;vertical-align:2px;white-space:nowrap}
 .temas button{display:flex;justify-content:space-between;width:100%;text-align:left;padding:12px 4px;border-bottom:1px solid var(--linha);font-size:15px}
 .temas button small{color:var(--tx2)}
 </style>
@@ -328,7 +329,7 @@ async function abrirFolha(liv, cap, ver) {
   selV = {liv, cap, ver};
   const k = liv + '.' + cap + '.' + ver, m = E.marcas[k] || {};
   document.querySelectorAll('.v.sel').forEach(x => x.classList.remove('sel'));
-  const vEl = $(`#t-ler .v[data-v="${ver}"]`); if (vEl && liv === E.livro && cap === E.cap) vEl.classList.add('sel');
+  const vEl = $(`#t-ler .v[data-v="${ver}"]`); if (telaAtual === 'ler' && vEl && liv === E.livro && cap === E.cap) vEl.classList.add('sel');
   const t = E.modo === 'cmp' ? 'blivre' : E.modo;
   const tx = await textoVers(t, liv, cap, ver) || await textoVers('bpm', liv, cap, ver);
   const L = LIV[liv];
@@ -354,7 +355,7 @@ async function abrirFolha(liv, cap, ver) {
 function fecharFolha() { $('#fundo').classList.remove('on'); $('#folha').classList.remove('on'); document.querySelectorAll('.v.sel').forEach(x => x.classList.remove('sel')); }
 function marca(criar) { const k = selV.liv + '.' + selV.cap + '.' + selV.ver; if (!E.marcas[k] && criar) E.marcas[k] = {}; return [k, E.marcas[k]]; }
 function limparMarca(k) { const m = E.marcas[k]; if (m && !m.cor && !m.fav && !m.nota) delete E.marcas[k]; }
-function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
+function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); if (telaAtual === 'hoje') { const y = scrollY; telaHoje().then(() => scrollTo(0, y)); } else if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
 function pintar(c) { const [k, m] = marca(true); m.cor = c; depoisMarca(k); fecharFolha(); }
 function favoritar() { const [k, m] = marca(true); m.fav = !m.fav; depoisMarca(k); toast(m.fav ? 'Guardado nos favoritos' : 'Tirado dos favoritos'); fecharFolha(); }
 function editarNota() {
@@ -489,8 +490,11 @@ function blocoTema(d, i, txt, rotulo) {
   let h = `${rotulo ? `<div class="grupo-tit" style="text-align:center;margin-top:26px">${rotulo}</div>` : ''}<div class="dev-tema">${esc(d.tema)}</div>`;
   for (const ref of d.refs) {
     const {liv, cap, vs} = partesRef(ref), caps = (txt[liv] || [])[cap - 1] || [];
-    h += `<div class="dev-p" onclick="abrir('${liv}',${cap},${vs[0]})"><div class="r">${esc(nomeRef(ref))}<span>ler o capítulo ›</span></div><div class="t">` +
-      vs.map(v => caps[v - 1] ? (vs.length > 1 ? `<sup>${v}</sup>` : '') + fmt(caps[v - 1]) : '').join(' ') + '</div></div>';
+    // tocar no versículo = marcar (cor, favorito, nota); o número no fim abre o capítulo
+    h += `<div class="dev-p"><div class="r">${esc(nomeRef(ref))}</div><div class="t">` +
+      vs.map(v => { if (!caps[v - 1]) return ''; const m = E.marcas[liv + '.' + cap + '.' + v] || {};
+        return `<span class="v dv ${m.cor || ''}" data-l="${liv}" data-c="${cap}" data-v="${v}">${vs.length > 1 ? `<sup>${v}</sup>` : ''}${fmt(caps[v - 1])}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span>`; }).join(' ') +
+      ` <button class="ir-cap" onclick="abrir('${liv}',${cap},${vs[0]})" title="Ler o capítulo inteiro">${LIV[liv].abr} ${cap}:${vs[0]} ›</button></div></div>`;
   }
   const lido = (E.devLidos || {})[i];
   return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button></div>`;
@@ -520,6 +524,11 @@ async function telaHoje() {
     <div class="info" style="text-align:center;margin-bottom:24px">${TRAD[E.trad].nome}</div>`;
   el.innerHTML = h;
 }
+$('#t-hoje').addEventListener('click', e => {
+  const v = e.target.closest('.dv'); if (!v || window.getSelection().toString()) return;
+  abrirFolha(v.dataset.l, +v.dataset.c, +v.dataset.v);
+  v.classList.add('sel');
+});
 function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
 
 // ---------- sobre e ajustes ----------
