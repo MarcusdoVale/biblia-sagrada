@@ -7,6 +7,10 @@
 <meta name="description" content="Bíblia para ler no celular, sem internet, com duas traduções livres para comparar.">
 <meta name="theme-color" content="#5b3a1e">
 <link rel="manifest" href="manifest.webmanifest">
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script defer src="firebase-config.js"></script>
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -137,6 +141,8 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 /* devocional */
 .dev-nome{text-align:center;font-family:var(--serif);font-size:17px;color:var(--tx2);margin-top:18px}.dev-nome b{color:var(--pri);font-weight:600}
 .img-prev{display:block;max-width:100%;max-height:52vh;margin:10px auto;border-radius:10px;box-shadow:var(--sombra)}
+.nuvem{font-size:13px;color:var(--tx2);text-align:center;margin:6px 0 0;line-height:1.5}.nuvem button:not(.btn){color:var(--pri);font-weight:600;text-decoration:underline;padding:2px 4px}
+.nuvem-box{background:var(--bg2);border-radius:12px;padding:12px 14px;margin:14px 0 4px;font-size:14px;line-height:1.5}
 .dev-data{text-align:center;color:var(--tx2);font-size:13px;margin-top:20px;text-transform:capitalize}
 .dev-tema{font-family:var(--serif);font-size:26px;font-weight:600;text-align:center;margin:6px 0 18px;line-height:1.3}
 .dev-p{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin:0 0 10px}
@@ -384,7 +390,7 @@ async function abrirFolha(liv, cap, ver) {
 function fecharFolha() { $('#fundo').classList.remove('on'); $('#folha').classList.remove('on'); document.querySelectorAll('.v.sel').forEach(x => x.classList.remove('sel')); }
 function marca(criar) { const k = selV.liv + '.' + selV.cap + '.' + selV.ver; if (!E.marcas[k] && criar) E.marcas[k] = {}; return [k, E.marcas[k]]; }
 function limparMarca(k) { const m = E.marcas[k]; if (m && !m.cor && !m.fav && !m.nota) delete E.marcas[k]; }
-function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); if (telaAtual === 'hoje') { const y = scrollY; telaHoje().then(() => scrollTo(0, y)); } else if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
+function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); nuvem('marcas', k); if (telaAtual === 'hoje') { const y = scrollY; telaHoje().then(() => scrollTo(0, y)); } else if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
 function pintar(c) { const [k, m] = marca(true); m.cor = c; depoisMarca(k); fecharFolha(); }
 function favoritar() { const [k, m] = marca(true); m.fav = !m.fav; depoisMarca(k); toast(m.fav ? 'Guardado nos favoritos' : 'Tirado dos favoritos'); fecharFolha(); }
 function editarNota() {
@@ -439,6 +445,7 @@ function grifar(cor) {
     if (cor) lista.push([a, b, cor]);
     lista.sort((p, q) => p[0] - q[0]);
     if (lista.length) E.grifos[k] = lista; else delete E.grifos[k];
+    nuvem('grifos', k);
   }
   salvar();
   getSelection().removeAllRanges(); grifoRange = null; $('#grifoBar').classList.remove('on');
@@ -525,7 +532,7 @@ async function telaMeus() {
     .filter(x => LIV[x.l])
     .filter(x => filtroMeus === 'tudo' || (filtroMeus === 'fav' && x.m.fav) || (filtroMeus === 'nota' && x.m.nota) || (filtroMeus === 'cor' && (x.m.cor || x.gt)))
     .sort((a, b) => (LIV[a.l]?.i - LIV[b.l]?.i) || a.c - b.c || a.v - b.v);
-  let h = '<div class="abas">' + [['tudo', 'Tudo'], ['res', '✍️ Resumos'], ['fav', '⭐ Favoritos'], ['nota', '📝 Notas'], ['cor', '🖍 Destaques']].map(([f, n]) => `<button class="${f === filtroMeus ? 'on' : ''}" onclick="filtroMeus='${f}';telaMeus()">${n}</button>`).join('') + '</div>';
+  let h = `<div class="nuvem-box nuvem">${nuvemHtml()}</div>` + '<div class="abas">' + [['tudo', 'Tudo'], ['res', '✍️ Resumos'], ['fav', '⭐ Favoritos'], ['nota', '📝 Notas'], ['cor', '🖍 Destaques']].map(([f, n]) => `<button class="${f === filtroMeus ? 'on' : ''}" onclick="filtroMeus='${f}';telaMeus()">${n}</button>`).join('') + '</div>';
   const resumos = Object.entries(E.resumos || {}).filter(([, r]) => r && r.tx);
   const verRes = filtroMeus === 'tudo' || filtroMeus === 'res';
   const dev = verRes && resumos.length ? await carregarDev().catch(() => []) : [];
@@ -540,7 +547,7 @@ async function telaMeus() {
     const tx = ((d[x.l] || [])[x.c - 1] || [])[x.v - 1] || '';
     h += `<div class="res" onclick="if(!getSelection().toString())abrir('${x.l}',${x.c},${x.v})"><div class="r">${x.m.fav ? '⭐ ' : ''}${x.m.cor ? `<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--${x.m.cor});margin-right:4px"></span>` : ''}${esc(refTxt(x.l, x.c, x.v))}${x.gt ? ` <span style="font-weight:400;color:var(--tx2)">(${TRAD[t].sigla})</span>` : ''}</div><div class="t">${fmtG(tx, t, x.k)}</div>${x.m.nota ? `<div class="n">${esc(x.m.nota)}</div>` : ''}</div>`;
   }
-  h += `<div class="aviso" style="margin-top:26px"><b>Cópia de segurança</b><br>Seus destaques, grifos, notas e resumos ficam guardados só neste celular. Se trocar de aparelho ou limpar o navegador, eles se perdem — de vez em quando, salve uma cópia.<br>
+  h += `<div class="aviso" style="margin-top:26px"><b>Cópia de segurança</b><br>${NV.ref ? 'Seus estudos já estão na nuvem. Se quiser, guarde também uma cópia em arquivo.' : 'Sem entrar na nuvem, seus destaques, grifos, notas e resumos ficam só neste aparelho. Se trocar de aparelho ou limpar o navegador, eles se perdem — de vez em quando, salve uma cópia.'}<br>
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" onclick="exportar()">Salvar cópia</button><button class="btn2" onclick="$('#arqImp').click()">Restaurar cópia</button></div>
     <input type="file" id="arqImp" accept=".json,application/json" style="display:none" onchange="importar(this.files[0])"></div><div style="height:20px"></div>`;
   el.innerHTML = h;
@@ -555,7 +562,7 @@ function importar(f) {
   f.text().then(s => { const j = JSON.parse(s); if (!j.marcas) throw 0; let n = 0; for (const [k, m] of Object.entries(j.marcas)) { const atual = E.marcas[k]; if (!atual || (m.em || 0) > (atual.em || 0)) { E.marcas[k] = m; n++; } }
     E.grifos = E.grifos || {}; for (const [k, g] of Object.entries(j.grifos || {})) if (!E.grifos[k]) { E.grifos[k] = g; n++; }
     E.resumos = E.resumos || {}; for (const [k, r] of Object.entries(j.resumos || {})) { const a = E.resumos[k]; if (!a || (r.em || 0) > (a.em || 0)) { E.resumos[k] = r; n++; } }
-    E.devLidos = Object.assign({}, j.devLidos || {}, E.devLidos || {}); salvar(); toast(n + ' marcações restauradas'); telaMeus(); })
+    E.devLidos = Object.assign({}, j.devLidos || {}, E.devLidos || {}); salvar(); enviarTudo({}); toast(n + ' marcações restauradas'); telaMeus(); })
     .catch(() => toast('Arquivo inválido'));
 }
 
@@ -581,7 +588,7 @@ function blocoTema(d, i, txt, rotulo) {
       ` <button class="ir-cap" onclick="abrir('${liv}',${cap},${vs[0]})" title="Ler o capítulo inteiro">${LIV[liv].abr} ${cap}:${vs[0]} ›</button></div></div>`;
   }
   const lido = (E.devLidos || {})[i], res = (E.resumos || {})[i];
-  h += `<div class="resumo"><div class="r">✍️ Meu resumo<small id="rs${i}">${res && res.tx ? 'salvo' : ''}</small></div><textarea data-i="${i}" placeholder="Escreva com suas palavras o que você aprendeu e como vai usar isso na sua vida…">${esc((res && res.tx) || '')}</textarea></div>`;
+  h += `<div class="resumo"><div class="r">✍️ Meu resumo<small id="rs${i}">${res && res.tx ? (NV.ref ? 'salvo na nuvem' : 'salvo neste aparelho') : ''}</small></div><textarea data-i="${i}" placeholder="Escreva com suas palavras o que você aprendeu e como vai usar isso na sua vida…">${esc((res && res.tx) || '')}</textarea></div>`;
   return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button> <button class="btn2" onclick="abrirImagem(${i})">📸 Imagem p/ Instagram</button></div>`;
 }
 async function telaHoje() {
@@ -602,7 +609,7 @@ async function telaHoje() {
   const k = E.devPorDia || 2;
   const dia = new Date(hojeZero()); dia.setDate(dia.getDate() + devOff);
   const dias = Math.round((dia - INICIO_DEV) / 864e5), ini = (((dias * k) % n) + n) % n;
-  let h = `<div class="dev-nome">Devocional de <b>${esc(nomeUsuario())}</b></div>
+  let h = `<div class="dev-nome">Devocional de <b>${esc(nomeUsuario())}</b></div><div class="nuvem">${nuvemHtml(true)}</div>
     <div class="cfg" style="border:0;padding:8px 0 0"><span style="color:var(--tx2);font-size:14px">Devocionais por dia</span><div class="seg">${[1, 2, 3, 4, 5].map(x => `<button class="${x === k ? 'on' : ''}" onclick="E.devPorDia=${x};salvar();telaHoje()">${x}</button>`).join('')}</div></div>
     <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>`;
   for (let x = 0; x < k; x++) { const i = (ini + x) % n; h += blocoTema(dev[i], i, txt, k > 1 ? `${x + 1}º devocional` : ''); }
@@ -622,10 +629,13 @@ $('#t-hoje').addEventListener('input', e => {
   const ta = e.target.closest('textarea[data-i]'); if (!ta) return;
   const i = ta.dataset.i; E.resumos = E.resumos || {};
   if (ta.value.trim()) E.resumos[i] = {tx: ta.value, em: Date.now()}; else delete E.resumos[i];
-  salvar(); crescer(ta); const s = $('#rs' + i); if (s) s.textContent = ta.value.trim() ? 'salvo' : '';
+  salvar(); crescer(ta); const s = $('#rs' + i); if (s) s.textContent = ta.value.trim() ? (NV.ref ? 'salvo na nuvem' : 'salvo neste aparelho') : '';
+  clearTimeout(resumoPend[i]); resumoPend[i] = setTimeout(() => { delete resumoPend[i]; nuvem('resumos', i); }, 700);
 });
+const resumoPend = {};
+addEventListener('visibilitychange', () => { if (document.hidden) for (const i of Object.keys(resumoPend)) { clearTimeout(resumoPend[i]); delete resumoPend[i]; nuvem('resumos', i); } });
 function crescer(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
-function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
+function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); nuvem('devLidos', i); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
 
 // ---------- imagem do devocional para Instagram / TikTok ----------
 const nomeUsuario = () => E.nome || 'Marcus do Vale';
@@ -736,6 +746,92 @@ async function compartilharImagem() {
 }
 async function salvarImagem() { baixar(await arquivoImagem()); toast('Imagem salva'); }
 function baixar(f) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
+
+// ---------- nuvem: estudos iguais no PC e no celular ----------
+// Usa o Firebase do Marcus (mesmo projeto do Rota Tambasa; as regras só liberam a conta Google dele).
+// Cada destaque/grifo/resumo é gravado como um campo separado (set com merge): um aparelho nunca apaga o que o outro fez.
+const CAMPOS = ['marcas', 'grifos', 'resumos', 'devLidos'];
+const NV = {ref: null, user: null, pronto: false};
+const paraNuvem = (c, v) => c === 'grifos' ? v.map(([a, b, cor]) => ({a, b, c: cor})) : v; // o Firestore não aceita lista dentro de lista
+const daNuvem = (c, v) => c === 'grifos' ? v.map(o => [o.a, o.b, o.c]) : v;
+async function iniciarNuvem() {
+  if (!window.firebase || !window.FIREBASE_CONFIG) return;
+  try {
+    if (!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const fs = firebase.firestore();
+    try { fs.settings({ignoreUndefinedProperties: true, merge: true}); } catch (e) {}
+    try { await fs.enablePersistence({synchronizeTabs: true}); } catch (e) {}
+    try { await firebase.auth().getRedirectResult(); } catch (e) {}
+    firebase.auth().onAuthStateChanged(u => {
+      NV.user = u; NV.pronto = true;
+      if (NV.parar) { NV.parar(); NV.parar = null; NV.ref = null; }
+      if (u) conectar(u);
+      mostrarNuvem();
+    });
+  } catch (e) { console.warn('nuvem', e); }
+}
+function conectar(u) {
+  NV.ref = firebase.firestore().doc(`users/${u.uid}/biblia/estudos`);
+  let primeira = true;
+  NV.parar = NV.ref.onSnapshot({includeMetadataChanges: false}, snap => {
+    const r = snap.data() || {};
+    const remoto = Object.fromEntries(CAMPOS.map(c => [c, Object.fromEntries(Object.entries(r[c] || {}).map(([k, v]) => [k, daNuvem(c, v)]))]));
+    if (primeira && E.nuvemUid !== u.uid) {
+      // primeira vez nesta conta: o que já foi feito neste aparelho sobe para a nuvem
+      primeira = false;
+      enviarTudo(remoto);
+      for (const c of CAMPOS) E[c] = Object.assign({}, remoto[c], E[c] || {});
+      E.nuvemUid = u.uid; E.pend = {};
+    } else {
+      // a nuvem manda; só o que foi mexido aqui sem conexão (E.pend) é reenviado
+      const pend = primeira ? Object.keys(E.pend || {}) : [];
+      const local = Object.fromEntries(CAMPOS.map(c => [c, E[c] || {}]));
+      primeira = false;
+      for (const c of CAMPOS) E[c] = remoto[c];
+      for (const p of pend) { const [c, k] = p.split('|'); if (local[c][k] === undefined) delete E[c][k]; else E[c][k] = local[c][k]; nuvem(c, k); }
+      E.pend = {};
+    }
+    salvar();
+    const digitando = document.activeElement && document.activeElement.matches('textarea,input');
+    if (!snap.metadata.hasPendingWrites && !digitando && !$('#folha').classList.contains('on')) redesenhar();
+  }, e => { console.warn('nuvem', e); toast('Não consegui ler a nuvem'); });
+}
+function nuvem(campo, chave) {
+  if (!NV.ref) { if (E.nuvemUid) { (E.pend = E.pend || {})[campo + '|' + chave] = 1; salvar(); } return; } // sem conexão com a nuvem agora: anota para enviar depois
+  const v = (E[campo] || {})[chave];
+  NV.ref.set({[campo]: {[chave]: v === undefined ? firebase.firestore.FieldValue.delete() : paraNuvem(campo, v)}}, {merge: true}).catch(e => console.warn('nuvem', e));
+}
+function enviarTudo(remoto) {
+  if (!NV.ref) return;
+  const envio = {}; let n = 0;
+  for (const c of CAMPOS) for (const [k, v] of Object.entries(E[c] || {})) {
+    const rv = (remoto[c] || {})[k];
+    const maisNovo = rv === undefined || (v && rv && typeof v === 'object' && !Array.isArray(v) && (v.em || 0) > (rv.em || 0));
+    if (maisNovo) { (envio[c] = envio[c] || {})[k] = paraNuvem(c, v); n++; }
+  }
+  if (n) NV.ref.set(envio, {merge: true}).catch(e => console.warn('nuvem', e));
+}
+function nuvemHtml(curto) {
+  if (!NV.pronto) return '';
+  if (NV.user) return `☁️ Na nuvem${curto ? '' : ' — igual no PC e no celular'} · ${esc(NV.user.email || '')}${curto ? '' : ' <button onclick="sairNuvem()">sair</button>'}`;
+  return curto ? `☁️ <button onclick="entrarNuvem()">Entrar com Google</button> para ver seus resumos no PC e no celular`
+    : `<b>☁️ Guardar na nuvem</b><br>Entre com sua conta Google (a mesma do Rota Tambasa) para seus resumos, grifos e notas aparecerem iguais no PC e no celular.<br><button class="btn" style="text-decoration:none;margin-top:8px" onclick="entrarNuvem()">Entrar com Google</button>`;
+}
+function mostrarNuvem() { document.querySelectorAll('.nuvem').forEach(el => el.innerHTML = nuvemHtml(!el.classList.contains('nuvem-box'))); }
+async function entrarNuvem() {
+  if (!window.firebase) { toast('Sem internet agora — tente de novo conectado'); return; }
+  const pv = new firebase.auth.GoogleAuthProvider(); pv.setCustomParameters({prompt: 'select_account'});
+  try { await firebase.auth().signInWithPopup(pv); }
+  catch (e) {
+    if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment', 'auth/cancelled-popup-request'].includes(e.code)) firebase.auth().signInWithRedirect(pv);
+    else if (e.code !== 'auth/popup-closed-by-user') toast('Não consegui entrar: ' + (e.code || e.message));
+  }
+}
+function sairNuvem() {
+  if (!confirm('Sair da nuvem neste aparelho?\nSeus estudos continuam guardados na nuvem. (Isso também sai do Rota Tambasa neste aparelho, porque é a mesma conta.)')) return;
+  firebase.auth().signOut();
+}
+addEventListener('load', iniciarNuvem);
 
 // ---------- sobre e ajustes ----------
 function telaSobre() {
