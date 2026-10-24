@@ -146,6 +146,8 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .img-v:last-child{border-bottom:0}
 .img-v input{width:22px;height:22px;flex:none;margin-top:1px;accent-color:var(--pri)}
 .img-v b{font-family:var(--ui);font-size:11px;color:var(--pri)}
+.img-tira{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding:8px 2px}
+.img-tira img{height:46vh;flex:none;border-radius:10px;box-shadow:var(--sombra);scroll-snap-align:center}
 .img-prev{display:block;max-width:100%;max-height:52vh;margin:10px auto;border-radius:10px;box-shadow:var(--sombra)}
 .nuvem{font-size:13px;color:var(--tx2);text-align:center;margin:6px 0 0;line-height:1.5}.nuvem button:not(.btn){color:var(--pri);font-weight:600;text-decoration:underline;padding:2px 4px}
 .nuvem-box{background:var(--bg2);border-radius:12px;padding:12px 14px;margin:14px 0 4px;font-size:14px;line-height:1.5}
@@ -645,17 +647,19 @@ function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete
 
 // ---------- imagem do devocional para Instagram / TikTok ----------
 const nomeUsuario = () => E.nome || 'Marcus do Vale';
-// IMG.sel = versículos que o Marcus marcou para a imagem ("MAR.7.6"); fica guardado por tema neste aparelho
-let IMG = {i: 0, fmt: 'post', sel: [], resumo: false};
+// IMG.modo: 'todo' = devocional inteiro em várias imagens (carrossel); 'escolher' = uma imagem só com os versículos marcados
+// IMG.sel = versículos marcados no modo escolher ("MAR.7.6"); fica guardado por tema neste aparelho
+let IMG = {i: 0, fmt: 'post', modo: 'todo', sel: [], resumo: false};
 async function abrirImagem(i) {
   let sel = []; try { sel = JSON.parse(localStorage.getItem('biblia_img_' + i) || '[]'); } catch (e) {}
-  IMG = {i, fmt: IMG.fmt, sel, resumo: false};
+  const res = (E.resumos || {})[i];
+  IMG = {i, fmt: IMG.fmt, modo: IMG.modo, sel, resumo: !!(res && res.tx)};
   await desenharFolhaImagem();
   $('#fundo').classList.add('on'); $('#folha').classList.add('on');
 }
 async function desenharFolhaImagem() {
   const dev = await carregarDev(), d = dev[IMG.i], res = (E.resumos || {})[IMG.i], txt = await carregar(E.trad);
-  const lista = d.refs.map(r => {
+  const lista = IMG.modo !== 'escolher' ? '' : d.refs.map(r => {
     const {liv, cap, vs} = partesRef(r);
     return `<div class="img-ref">${esc(nomeRef(r))}</div>` + vs.map(v => {
       const k = liv + '.' + cap + '.' + v, tx = (((txt[liv] || [])[cap - 1] || [])[v - 1] || '').replace(/[\[\]]/g, '');
@@ -663,14 +667,14 @@ async function desenharFolhaImagem() {
     }).join('');
   }).join('');
   $('#folha').innerHTML = `<div class="alca"></div><div class="fr">📸 Imagem para Instagram / TikTok</div>
-    <div class="seg" style="margin:6px 0">${[['post', 'Post (4:5)'], ['story', 'Stories / TikTok (9:16)']].map(([f, n]) => `<button class="${IMG.fmt === f ? 'on' : ''}" onclick="IMG.fmt='${f}';desenharFolhaImagem()">${n}</button>`).join('')}</div>
-    <div class="info"><b>Marque os versículos que vão na imagem:</b></div>
-    <div class="img-lista">${lista}</div>
+    <div class="seg" style="margin:6px 0">${[['todo', 'Devocional inteiro'], ['escolher', 'Escolher versículos']].map(([m, n]) => `<button class="${IMG.modo === m ? 'on' : ''}" onclick="IMG.modo='${m}';desenharFolhaImagem()">${n}</button>`).join('')}</div>
+    <div class="seg" style="margin:0 0 6px">${[['post', 'Post (4:5)'], ['story', 'Stories / TikTok (9:16)']].map(([f, n]) => `<button class="${IMG.fmt === f ? 'on' : ''}" onclick="IMG.fmt='${f}';desenharFolhaImagem()">${n}</button>`).join('')}</div>
+    ${IMG.modo === 'escolher' ? `<div class="info"><b>Marque os versículos que vão na imagem:</b></div><div class="img-lista">${lista}</div>` : `<div class="info">Todos os textos do devocional, em várias imagens para arrastar para o lado (carrossel no Instagram, fotos no TikTok).</div>`}
     ${res && res.tx ? `<label style="display:flex;gap:8px;align-items:center;margin:8px 2px;font-size:14px"><input type="checkbox" style="width:auto" ${IMG.resumo ? 'checked' : ''} onchange="IMG.resumo=this.checked;atualizarPrevia()"> Incluir meu resumo</label>` : ''}
     <div id="imgVazio" class="aviso" style="text-align:center;display:none">Marque pelo menos um versículo acima.</div>
-    <img class="img-prev" id="imgPrev" alt="Prévia da imagem">
-    <div class="info" id="imgAviso" style="text-align:center;color:#b3261e"></div>
-    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn" id="btShare" onclick="compartilharImagem()">Compartilhar</button><button class="btn2" id="btSalvar" onclick="salvarImagem()">Salvar imagem</button><button class="btn2" onclick="fecharFolha()">Fechar</button></div>`;
+    <div class="img-tira" id="imgTira"></div>
+    <div class="info" id="imgAviso" style="text-align:center"></div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:8px"><button class="btn" id="btShare" onclick="compartilharImagem()">Compartilhar</button><button class="btn2" id="btSalvar" onclick="salvarImagem()">Salvar</button><button class="btn2" onclick="fecharFolha()">Fechar</button></div>`;
   await atualizarPrevia();
 }
 function marcarImg(k, on) {
@@ -678,13 +682,16 @@ function marcarImg(k, on) {
   try { localStorage.setItem('biblia_img_' + IMG.i, JSON.stringify(IMG.sel)); } catch (e) {}
   atualizarPrevia();
 }
+async function gerarTelas() { return IMG.modo === 'escolher' ? [await gerarImagem()] : gerarCarrossel(); }
 async function atualizarPrevia() {
-  const vazio = !IMG.sel.length;
-  $('#imgVazio').style.display = vazio ? 'block' : 'none'; $('#imgPrev').style.display = vazio ? 'none' : 'block';
+  const vazio = IMG.modo === 'escolher' && !IMG.sel.length;
+  $('#imgVazio').style.display = vazio ? 'block' : 'none';
   $('#btShare').disabled = $('#btSalvar').disabled = vazio; $('#imgAviso').textContent = '';
-  if (vazio) return;
-  const cv = await gerarImagem();
-  $('#imgPrev').src = cv.toDataURL('image/jpeg', .85);
+  if (vazio) { $('#imgTira').innerHTML = ''; return; }
+  const telas = await gerarTelas();
+  $('#imgTira').innerHTML = telas.map((cv, n) => `<img src="${cv.toDataURL('image/jpeg', .8)}" alt="Imagem ${n + 1}">`).join('');
+  $('#imgAviso').textContent = IMG.aviso || (telas.length > 1 ? `${telas.length} imagens — arraste a prévia para o lado para ver todas.` : '');
+  $('#imgAviso').style.color = IMG.aviso ? '#b3261e' : '';
 }
 // "MAR.7.6","MAR.7.7","MAR.7.8","COL.2.8" → "Marcos 7:6-8; Colossenses 2:8"
 function refsDe(ks) {
@@ -705,13 +712,8 @@ function quebrar(ctx, texto, larg) {
 async function gerarImagem() {
   const dev = await carregarDev(), d = dev[IMG.i], t = E.trad, txt = await carregar(t);
   const story = IMG.fmt === 'story', W = 1080, H = story ? 1920 : 1350;
-  try { await Promise.all(['400 40px Literata', '600 40px Literata', 'italic 400 40px Literata', '600 30px Inter'].map(f => document.fonts.load(f))); } catch (e) {}
-  const SERIF = 'Literata, Georgia, serif', UI = 'Inter, system-ui, sans-serif';
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
-  // fundo
-  const g = c.createLinearGradient(0, 0, W * .4, H); g.addColorStop(0, '#6b4424'); g.addColorStop(1, '#24150b'); c.fillStyle = g; c.fillRect(0, 0, W, H);
-  const luz = c.createRadialGradient(W * .5, H * .18, 10, W * .5, H * .18, W * .9); luz.addColorStop(0, 'rgba(255,220,160,.18)'); luz.addColorStop(1, 'rgba(255,220,160,0)'); c.fillStyle = luz; c.fillRect(0, 0, W, H);
-  c.strokeStyle = 'rgba(224,183,122,.35)'; c.lineWidth = 2; c.strokeRect(40, 40, W - 80, H - 80);
+  await fontesImg();
+  const {cv, c} = telaImg(W, H);
   const OURO = '#e3bb80', CREME = '#fbf3e4', M = 110, LARG = W - 2 * M;
   // texto bíblico: exatamente os versículos que o Marcus marcou, na ordem do devocional
   const ordem = d.refs.flatMap(r => { const {liv, cap, vs} = partesRef(r); return vs.map(v => liv + '.' + cap + '.' + v); });
@@ -764,18 +766,122 @@ function espacado(c, t, x, y, esp) { // letras espaçadas, centralizadas
   const larg = [...t].reduce((s, ch) => s + c.measureText(ch).width + esp, -esp); let px = x - larg / 2;
   c.textAlign = 'left'; for (const ch of t) { c.fillText(ch, px, y); px += c.measureText(ch).width + esp; } c.textAlign = 'center';
 }
-async function arquivoImagem() {
-  const cv = await gerarImagem(), dev = await carregarDev();
-  const blob = await new Promise(r => cv.toBlob(r, 'image/png'));
-  const nome = 'devocional-' + semAcento(dev[IMG.i].tema).replace(/[^a-z0-9]+/g, '-') + (IMG.fmt === 'story' ? '-stories' : '-post') + '.png';
-  return new File([blob], nome, {type: 'image/png'});
+const SERIF = 'Literata, Georgia, serif', UI = 'Inter, system-ui, sans-serif', OURO = '#e3bb80', CREME = '#fbf3e4';
+async function fontesImg() { try { await Promise.all(['400 40px Literata', '600 40px Literata', 'italic 400 40px Literata', '600 30px Inter', '400 30px Inter'].map(f => document.fonts.load(f))); } catch (e) {} }
+function telaImg(W, H) {
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const c = cv.getContext('2d');
+  const g = c.createLinearGradient(0, 0, W * .4, H); g.addColorStop(0, '#6b4424'); g.addColorStop(1, '#24150b'); c.fillStyle = g; c.fillRect(0, 0, W, H);
+  const luz = c.createRadialGradient(W * .5, H * .18, 10, W * .5, H * .18, W * .9); luz.addColorStop(0, 'rgba(255,220,160,.18)'); luz.addColorStop(1, 'rgba(255,220,160,0)'); c.fillStyle = luz; c.fillRect(0, 0, W, H);
+  c.strokeStyle = 'rgba(224,183,122,.35)'; c.lineWidth = 2; c.strokeRect(40, 40, W - 80, H - 80);
+  c.textAlign = 'center'; c.textBaseline = 'top';
+  return {cv, c};
+}
+function rodapeImg(c, W, y, t, pagina) {
+  c.fillStyle = CREME; c.font = `italic 400 38px ${SERIF}`; c.fillText(nomeUsuario(), W / 2, y); y += 50;
+  c.fillStyle = 'rgba(251,243,228,.55)'; c.font = `400 20px ${UI}`;
+  c.fillText((t === 'blivre' ? 'Texto: Bíblia Livre (BLIVRE) · CC BY 4.0' : 'Texto: Bíblia Portuguesa Mundial · domínio público') + (pagina ? '   ·   ' + pagina : ''), W / 2, y);
+}
+// devocional inteiro: capa + os textos (versículos inteiros por imagem; o que não cabe continua na seguinte) + resumo
+async function gerarCarrossel() {
+  const dev = await carregarDev(), d = dev[IMG.i], t = E.trad, txt = await carregar(t);
+  const story = IMG.fmt === 'story', W = 1080, H = story ? 1920 : 1350, M = 110, LARG = W - 2 * M;
+  const topo = story ? 260 : 120, base = story ? H - 300 : H - 110; // stories: deixa livre onde o Instagram põe os botões
+  const fs = story ? 54 : 46, lh = fs * 1.45, ROD = 74;
+  await fontesImg();
+  const medir = telaImg(10, 10).c; medir.font = `400 ${fs}px ${SERIF}`;
+  const cabe = Math.floor((base - topo - 70 - 70 - ROD - 40) / lh); // linhas de texto por imagem
+  // reparte os versículos de um texto em imagens de no máximo `lim` linhas
+  const repartir = (versos, lim) => {
+    const out = []; let atual = {ks: [], tx: ''};
+    for (const [k, tx] of versos) {
+      const junto = atual.tx ? atual.tx + ' ' + tx : tx;
+      if (quebrar(medir, '“' + junto + '”', LARG).length <= lim) { atual.ks.push(k); atual.tx = junto; continue; }
+      if (atual.ks.length) out.push(atual);
+      atual = {ks: [k], tx};
+      const ls = quebrar(medir, '“' + tx + '”', LARG);
+      if (ls.length > cabe) { // um versículo sozinho maior que a imagem: divide em partes
+        for (let x = 0; x < ls.length; x += cabe) out.push({ks: [k], linhas: ls.slice(x, x + cabe), parte: x > 0 ? 'cont' : 'ini', fim: x + cabe >= ls.length});
+        atual = {ks: [], tx: ''};
+      }
+    }
+    if (atual.ks.length) out.push(atual);
+    return out;
+  };
+  const paginas = [];
+  for (const r of d.refs) {
+    const {liv, cap, vs} = partesRef(r);
+    const versos = vs.map(v => [liv + '.' + cap + '.' + v, (((txt[liv] || [])[cap - 1] || [])[v - 1] || '').replace(/[\[\]]/g, '')]).filter(x => x[1]);
+    let pgs = repartir(versos, cabe);
+    if (pgs.length > 1) { // equilibra: em vez de sobrar 1 versículo sozinho na última imagem, divide por igual
+      const linhas = quebrar(medir, versos.map(x => x[1]).join(' '), LARG).length;
+      for (let lim = Math.ceil(linhas / pgs.length); lim < cabe; lim++) { const t2 = repartir(versos, lim); if (t2.length === pgs.length) { pgs = t2; break; } }
+    }
+    paginas.push(...pgs);
+  }
+  const resumo = IMG.resumo && (E.resumos || {})[IMG.i] ? E.resumos[IMG.i].tx.trim() : '';
+  const total = 1 + paginas.length + (resumo ? 1 : 0), telas = [];
+  // capa
+  {
+    const {cv, c} = telaImg(W, H), tt = story ? 88 : 76;
+    c.font = `600 ${tt}px ${SERIF}`; const lt = quebrar(c, d.tema, LARG);
+    const refs = d.refs.map(r => nomeRef(r));
+    const alt = 30 + 44 + lt.length * tt * 1.2 + 60 + refs.length * 46 + 70;
+    let y = topo + Math.max(0, (base - ROD - 60 - topo - alt) / 2);
+    c.fillStyle = OURO; c.font = `600 28px ${UI}`; espacado(c, 'DEVOCIONAL DO DIA', W / 2, y, 7); y += 30 + 14;
+    c.fillStyle = 'rgba(251,243,228,.7)'; c.font = `400 28px ${UI}`; c.fillText(new Date().toLocaleDateString('pt-BR', {day: 'numeric', month: 'long', year: 'numeric'}), W / 2, y); y += 54;
+    c.fillStyle = CREME; c.font = `600 ${tt}px ${SERIF}`; for (const l of lt) { c.fillText(l, W / 2, y); y += tt * 1.2; }
+    y += 20; c.fillStyle = OURO; c.fillRect(W / 2 - 40, y, 80, 3); y += 40;
+    c.fillStyle = 'rgba(227,187,128,.95)'; c.font = `500 32px ${UI}`; for (const r of refs) { c.fillText(r, W / 2, y); y += 46; }
+    if (total > 1) { c.fillStyle = 'rgba(251,243,228,.6)'; c.font = `400 26px ${UI}`; c.fillText('arraste para o lado  →', W / 2, base - ROD - 60); }
+    rodapeImg(c, W, base - ROD, t, total > 1 ? '1/' + total : '');
+    telas.push(cv);
+  }
+  // textos
+  paginas.forEach((pg, n) => {
+    const {cv, c} = telaImg(W, H);
+    c.font = `400 ${fs}px ${SERIF}`;
+    let linhas = pg.linhas || quebrar(c, '“' + pg.tx + '”', LARG);
+    if (pg.linhas && !pg.fim) linhas[linhas.length - 1] += ' …';
+    let ref = refsDe(pg.ks); if (pg.parte === 'cont') ref += ' (continuação)';
+    c.fillStyle = 'rgba(227,187,128,.85)'; c.font = `600 24px ${UI}`; espacado(c, d.tema.toUpperCase().slice(0, 60), W / 2, topo, 4);
+    const alt = linhas.length * lh + 30 + 40;
+    let y = topo + 70 + Math.max(0, (base - ROD - 40 - topo - 70 - alt) / 2);
+    c.fillStyle = CREME; c.font = `400 ${fs}px ${SERIF}`; for (const l of linhas) { c.fillText(l, W / 2, y); y += lh; }
+    y += 30; c.fillStyle = OURO; c.font = `600 34px ${UI}`; c.fillText(ref, W / 2, y);
+    rodapeImg(c, W, base - ROD, t, (n + 2) + '/' + total);
+    telas.push(cv);
+  });
+  // resumo
+  if (resumo) {
+    const {cv, c} = telaImg(W, H);
+    let fr = story ? 52 : 46, lr;
+    for (; fr >= 32; fr -= 2) { c.font = `italic 400 ${fr}px ${SERIF}`; lr = quebrar(c, resumo, LARG - 20); if (lr.length * fr * 1.5 <= base - topo - 160 - ROD) break; }
+    const max = Math.floor((base - topo - 160 - ROD) / (fr * 1.5)); if (lr.length > max) { lr = lr.slice(0, max); lr[max - 1] += '…'; }
+    const alt = 30 + 50 + lr.length * fr * 1.5;
+    let y = topo + Math.max(0, (base - ROD - 40 - topo - alt) / 2);
+    c.fillStyle = OURO; c.font = `600 28px ${UI}`; espacado(c, 'O QUE EU APRENDI', W / 2, y, 6); y += 30 + 50;
+    c.fillStyle = CREME; c.font = `italic 400 ${fr}px ${SERIF}`; for (const l of lr) { c.fillText(l, W / 2, y); y += fr * 1.5; }
+    rodapeImg(c, W, base - ROD, t, total + '/' + total);
+    telas.push(cv);
+  }
+  IMG.aviso = telas.length > 20 ? 'O Instagram aceita até 20 imagens por post; só as 20 primeiras vão.' : '';
+  return telas.slice(0, 20);
+}
+async function arquivosImagem() {
+  const telas = await gerarTelas(), dev = await carregarDev();
+  const base = 'devocional-' + semAcento(dev[IMG.i].tema).replace(/[^a-z0-9]+/g, '-') + (IMG.fmt === 'story' ? '-stories' : '-post');
+  return Promise.all(telas.map(async (cv, n) => new File([await new Promise(r => cv.toBlob(r, 'image/png'))], base + (telas.length > 1 ? '-' + String(n + 1).padStart(2, '0') : '') + '.png', {type: 'image/png'})));
 }
 async function compartilharImagem() {
-  const f = await arquivoImagem();
-  if (navigator.canShare && navigator.canShare({files: [f]})) { try { await navigator.share({files: [f]}); } catch (e) {} }
-  else { baixar(f); toast('Imagem salva — abra o Instagram e escolha da galeria'); }
+  const fs = await arquivosImagem();
+  if (navigator.canShare && navigator.canShare({files: fs})) { try { await navigator.share({files: fs}); } catch (e) {} }
+  else { await salvarImagem(); toast('Imagens salvas — abra o Instagram e escolha da galeria'); }
 }
-async function salvarImagem() { baixar(await arquivoImagem()); toast('Imagem salva'); }
+async function salvarImagem() {
+  const fs = await arquivosImagem();
+  for (const f of fs) { baixar(f); await new Promise(r => setTimeout(r, 400)); }
+  toast(fs.length > 1 ? fs.length + ' imagens salvas' : 'Imagem salva');
+}
 function baixar(f) { const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000); }
 
 // ---------- nuvem: estudos iguais no PC e no celular ----------
