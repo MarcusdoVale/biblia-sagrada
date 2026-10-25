@@ -151,6 +151,7 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .img-prev{display:block;max-width:100%;max-height:52vh;margin:10px auto;border-radius:10px;box-shadow:var(--sombra)}
 .nuvem{font-size:13px;color:var(--tx2);text-align:center;margin:6px 0 0;line-height:1.5}.nuvem button:not(.btn){color:var(--pri);font-weight:600;text-decoration:underline;padding:2px 4px}
 .nuvem-box{background:var(--bg2);border-radius:12px;padding:12px 14px;margin:14px 0 4px;font-size:14px;line-height:1.5}
+.paginas{display:flex;justify-content:center;gap:8px;margin:12px 0 4px}.paginas button{width:44px;height:44px;border-radius:50%;background:var(--bg2);font-weight:600;color:var(--tx2);font-size:16px}.paginas button.lido{color:var(--pri)}.paginas button.on{background:var(--pri);color:var(--priTx)}
 .dev-data{text-align:center;color:var(--tx2);font-size:13px;margin-top:20px;text-transform:capitalize}
 .dev-tema{font-family:var(--serif);font-size:26px;font-weight:600;text-align:center;margin:6px 0 18px;line-height:1.3}
 .dev-p{background:var(--card);border:1px solid var(--linha);border-radius:12px;padding:12px 14px;margin:0 0 10px}
@@ -575,7 +576,8 @@ function importar(f) {
 }
 
 // ---------- devocional: um tema por dia, só com textos bíblicos ----------
-let DEV = null, devOff = 0, devUnico = null, devTemas = false; // devOff = dias antes/depois de hoje
+const DEV_POR_DIA = 5;
+let DEV = null, devOff = 0, devPag = null, devUnico = null, devTemas = false; // devOff = dias antes/depois de hoje
 const INICIO_DEV = new Date(2026, 9, 23); // os temas começam neste dia; seguem em ordem e recomeçam
 const hojeZero = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
 function carregarDev() { if (!DEV) DEV = fetch('dados/devocional.json').then(r => r.json()).catch(e => { DEV = null; throw e; }); return DEV; }
@@ -614,14 +616,19 @@ async function telaHoje() {
     el.querySelectorAll('textarea[data-i]').forEach(crescer);
     return;
   }
-  const k = E.devPorDia || 2;
+  // sempre 5 por dia, em sequência (dia 23/10 = temas 1–5, dia 24 = 6–10…), um por página; os números são as páginas
+  const k = DEV_POR_DIA;
   const dia = new Date(hojeZero()); dia.setDate(dia.getDate() + devOff);
   const dias = Math.round((dia - INICIO_DEV) / 864e5), ini = (((dias * k) % n) + n) % n;
+  const temas = Array.from({length: k}, (_, x) => (ini + x) % n), lidos = E.devLidos || {};
+  if (devPag === null || devPag >= k) { devPag = temas.findIndex(i => !lidos[i]); if (devPag < 0) devPag = 0; } // abre no primeiro ainda não lido
+  const i = temas[devPag];
   let h = `<div class="dev-nome">Devocional de <b>${esc(nomeUsuario())}</b></div><div class="nuvem">${nuvemHtml(true)}</div>
-    <div class="cfg" style="border:0;padding:8px 0 0"><span style="color:var(--tx2);font-size:14px">Devocionais por dia</span><div class="seg">${[1, 2, 3, 4, 5].map(x => `<button class="${x === k ? 'on' : ''}" onclick="E.devPorDia=${x};salvar();telaHoje()">${x}</button>`).join('')}</div></div>
-    <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>`;
-  for (let x = 0; x < k; x++) { const i = (ini + x) % n; h += blocoTema(dev[i], i, txt, k > 1 ? `${x + 1}º devocional` : ''); }
-  h += `<div class="nav-cap"><button onclick="devOff--;telaHoje();scrollTo(0,0)">‹ Dia anterior</button>${devOff ? `<button onclick="devOff=0;telaHoje();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="devOff++;telaHoje();scrollTo(0,0)">Próximo dia ›</button></div>
+    <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>
+    <div class="paginas">${temas.map((t, x) => `<button class="${x === devPag ? 'on' : ''}${lidos[t] ? ' lido' : ''}" onclick="devPag=${x};telaHoje();scrollTo(0,0)">${lidos[t] ? '✓' : x + 1}</button>`).join('')}</div>`;
+  h += blocoTema(dev[i], i, txt, `${devPag + 1}º devocional de ${k}`);
+  h += devPag < k - 1 ? `<div style="text-align:center;margin:6px 0 4px"><button class="btn" onclick="devPag++;telaHoje();scrollTo(0,0)">Próximo devocional (${devPag + 2} de ${k}) ›</button></div>` : '';
+  h += `<div class="nav-cap"><button onclick="devOff--;devPag=null;telaHoje();scrollTo(0,0)">‹ Dia anterior</button>${devOff ? `<button onclick="devOff=0;devPag=null;telaHoje();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="devOff++;devPag=null;telaHoje();scrollTo(0,0)">Próximo dia ›</button></div>
     <div style="text-align:center;margin-bottom:24px"><button class="btn2" onclick="devTemas=true;telaHoje();scrollTo(0,0)">Ver todos os ${n} temas</button></div>
     <div class="info" style="text-align:center;margin-bottom:24px">${TRAD[E.trad].nome}</div>`;
   el.innerHTML = h;
@@ -1001,7 +1008,7 @@ function telaSobre() {
   <p>No Antigo Testamento hebraico, o nome de Deus aparece cerca de 7 mil vezes escrito com quatro letras: <b>YHWH</b>. A pronúncia exata se perdeu, porque por respeito os judeus deixaram de pronunciá-lo em voz alta e liam “Adonai” (Senhor). Por isso a maioria das Bíblias escreve <b>SENHOR</b> em letras maiúsculas — isso indica que ali, no original, está o nome. Outras traduções escrevem “Javé”, “Iavé” ou “Jeová”. São escolhas de tradução; o texto original é o mesmo. Quando quiser ver exatamente o que está escrito, use o botão <b>🔤 Original</b>.</p>
 
   <h2>Como funciona o app</h2>
-  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Para <b>grifar só algumas palavras</b>, segure o dedo sobre a palavra, arraste para escolher o trecho e toque numa cor na barra que aparece embaixo (✕ apaga o grifo).<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, os temas do dia (você escolhe quantos por dia, de 1 a 5; são 64 temas e depois recomeça), só com textos da Bíblia, sem comentários de ninguém. Embaixo de cada tema há o espaço <b>✍️ Meu resumo</b> para você escrever com suas palavras; ele salva sozinho. O número no fim de cada texto abre o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
+  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Para <b>grifar só algumas palavras</b>, segure o dedo sobre a palavra, arraste para escolher o trecho e toque numa cor na barra que aparece embaixo (✕ apaga o grifo).<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, 5 devocionais por dia, um em cada página (toque nos números 1 a 5; o ✓ mostra os que você já marcou como lidos). São 64 temas e depois recomeça, só com textos da Bíblia, sem comentários de ninguém. Embaixo de cada tema há o espaço <b>✍️ Meu resumo</b> para você escrever com suas palavras; ele salva sozinho. O número no fim de cada texto abre o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
   <p><small>Feito para Marcus do Vale.</small></p>
   </div>`;
 }
