@@ -1,7 +1,8 @@
-// Bíblia Sagrada — funciona offline. Versão 21c281dbde
-const CACHE = 'biblia-21c281dbde';
+// Bíblia Sagrada — funciona offline. Versão f680ce4969
+const CACHE = 'biblia-f680ce4969';
 const BASICO = ['./', 'index.html', 'manifest.webmanifest', 'dados/blivre.json', 'dados/bpm.json', 'dados/devocional.json', 'firebase-config.js', 'icons/icon-192.png', 'icons/icon-512.png'];
-self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASICO)).then(() => self.skipWaiting())); });
+// install: {cache: 'reload'} = sempre baixa o arquivo novo, nunca o velho guardado pelo navegador
+self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASICO.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
