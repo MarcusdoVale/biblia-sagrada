@@ -592,29 +592,31 @@ function temasDoDia(dia, n) {
   return Array.from({length: DEV_POR_DIA}, (_, x) => (ini + x) % n);
 }
 
-// ---------- ação do dia: cada tema traz uma sugestão prática; o Marcus escolhe uma para fazer ao longo do dia ----------
-// E.exerc["2026-11-12"] = {em, acao: índice do tema, fez: 'sim'|'parte'|'nao', como: 'texto'}
+// ---------- ação do dia: o Marcus escreve a ação que ele mesmo decidiu fazer ao longo do dia (sem sugestões do app) ----------
+// E.exerc["2026-11-14"] = {em, minha: 'texto da ação', fez: 'sim'|'parte'|'nao', como: 'texto'}
 const chaveDia = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 function diaAcao() { E.exerc = E.exerc || {}; return E.exerc[chaveDia(hojeZero())] || {}; }
 function gravarDiaAcao(mudar) { const k = chaveDia(hojeZero()); E.exerc = E.exerc || {}; const d = Object.assign({}, E.exerc[k] || {}); mudar(d); d.em = Date.now(); E.exerc[k] = d; salvar(); nuvem('exerc', k); }
 let acaoTrocar = false;
-function cartaoAcao(dev, temas) {
+function cartaoAcao(dev) {
   const d = diaAcao(), noite = new Date().getHours() >= 18;
-  if (d.acao === undefined || acaoTrocar || !dev[d.acao]) {
-    return `<div class="ex-card" id="cartaoAcao"><div class="ex-tit">🎯 Ação de hoje</div><div class="info">Escolha uma ação para fazer ao longo do dia. São sugestões ligadas aos devocionais de hoje (não são texto bíblico).</div>
-      <div class="img-lista" style="text-align:left;max-height:none">${temas.map(t => `<label class="img-v"><input type="radio" name="acao" ${d.acao === t ? 'checked' : ''} onchange="escolherAcao(${t})"><span><b>${esc(dev[t].tema)}</b><br>${esc(dev[t].acao)}</span></label>`).join('')}</div></div>`;
+  const minha = d.minha !== undefined ? d.minha : (d.acao !== undefined && dev[d.acao] ? dev[d.acao].acao : ''); // dias antigos guardavam a sugestão escolhida
+  if (!minha.trim() || acaoTrocar) {
+    return `<div class="ex-card" id="cartaoAcao"><div class="ex-tit">🎯 Minha ação de hoje</div><div class="info">Depois de ler os devocionais, escreva uma coisa que você vai praticar hoje.</div>
+      <textarea id="acaoMinha" placeholder="O que eu vou praticar hoje?" style="margin-top:8px;min-height:70px">${esc(minha)}</textarea>
+      <div style="margin-top:8px"><button class="btn" onclick="salvarMinha()">Salvar minha ação</button>${acaoTrocar ? ` <button class="btn2" onclick="acaoTrocar=false;telaHoje()">Cancelar</button>` : ''}</div></div>`;
   }
-  const t = d.acao, fez = d.fez;
-  let h = `<div class="ex-card" id="cartaoAcao"><div class="ex-tit">🎯 Sua ação de hoje</div>
-    <div class="acao-tx">${esc(dev[t].acao)}</div><div class="info">Do devocional: <b>${esc(dev[t].tema)}</b></div>`;
+  const fez = d.fez;
+  let h = `<div class="ex-card" id="cartaoAcao"><div class="ex-tit">🎯 Minha ação de hoje</div>
+    <div class="acao-tx">${esc(minha)}</div>`;
   if (noite || fez) {
     h += `<div class="ex-tit" style="margin-top:12px">🌙 Você fez?</div><div class="seg" style="display:inline-flex">${[['sim', 'Fiz'], ['parte', 'Em parte'], ['nao', 'Não fiz']].map(([v, n]) => `<button class="${fez === v ? 'on' : ''}" onclick="marcarFez('${v}')">${n}</button>`).join('')}</div>
       <textarea id="acaoComo" placeholder="Como foi? Onde você deu fruto hoje, mesmo que pouco?" style="margin-top:8px;min-height:70px">${esc(d.como || '')}</textarea>`;
   } else h += `<div class="info">À noite (a partir das 18h) aqui aparece: <b>Você fez?</b></div>`;
-  h += `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px"><button class="btn2" onclick="acaoTrocar=true;telaHoje()">Trocar ação</button><button class="btn2" onclick="lembrete(12,30)">⏰ Lembrete 12:30</button><button class="btn2" onclick="lembrete(18,30)">⏰ Lembrete 18:30</button></div></div>`;
+  h += `<div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:10px"><button class="btn2" onclick="acaoTrocar=true;telaHoje()">Mudar ação</button><button class="btn2" onclick="lembrete(12,30)">⏰ Lembrete 12:30</button><button class="btn2" onclick="lembrete(18,30)">⏰ Lembrete 18:30</button></div></div>`;
   return h;
 }
-function escolherAcao(t) { gravarDiaAcao(d => { d.acao = t; delete d.fez; }); acaoTrocar = false; telaHoje(); }
+function salvarMinha() { const tx = $('#acaoMinha').value.trim(); if (!tx) { toast('Escreva a sua ação primeiro'); return; } gravarDiaAcao(d => { d.minha = tx; delete d.acao; }); acaoTrocar = false; telaHoje(); }
 function marcarFez(v) { gravarDiaAcao(d => { d.fez = v; }); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
 $('#t-hoje').addEventListener('input', e => {
   if (e.target.id !== 'acaoComo') return;
@@ -625,7 +627,7 @@ $('#t-hoje').addEventListener('input', e => {
 function lembrete(h, m) {
   const d = hojeZero(), p = n => String(n).padStart(2, '0'), dia = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
   const link = location.origin + location.pathname + '#acao';
-  const u = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('🎯 Ação do devocional') + '&dates=' + dia + 'T' + p(h) + p(m) + '00/' + dia + 'T' + p(h) + p(m + 10) + '00&ctz=America/Sao_Paulo&recur=' + encodeURIComponent('RRULE:FREQ=DAILY') + '&details=' + encodeURIComponent('Lembrar da ação que escolhi no devocional de hoje: ' + link);
+  const u = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent('🎯 Ação do devocional') + '&dates=' + dia + 'T' + p(h) + p(m) + '00/' + dia + 'T' + p(h) + p(m + 10) + '00&ctz=America/Sao_Paulo&recur=' + encodeURIComponent('RRULE:FREQ=DAILY') + '&details=' + encodeURIComponent('Lembrar da ação que eu decidi praticar hoje: ' + link);
   window.open(u, '_blank', 'noopener');
 }
 function carregarDev() { if (!DEV) DEV = fetch('dados/devocional.json').then(r => r.json()).catch(e => { DEV = null; throw e; }); return DEV; }
@@ -645,9 +647,7 @@ function blocoTema(d, i, txt, rotulo) {
         return `<span class="v dv ${m.cor || ''}" data-l="${liv}" data-c="${cap}" data-v="${v}">${vs.length > 1 ? `<sup>${v}</sup>` : ''}${fmtG(caps[v - 1], E.trad, liv + '.' + cap + '.' + v)}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span>`; }).join(' ') +
       ` <button class="ir-cap" onclick="abrir('${liv}',${cap},${vs[0]})" title="Ler o capítulo inteiro">${LIV[liv].abr} ${cap}:${vs[0]} ›</button></div></div>`;
   }
-  const lido = (E.devLidos || {})[i], res = (E.resumos || {})[i], hojeAcao = diaAcao().acao === i;
-  if (d.acao) h += `<div class="acao-box"><div class="r">🎯 Sugestão de ação <small>(não é texto bíblico)</small></div><div class="acao-tx">${esc(d.acao)}</div>
-    ${devOff === 0 && devUnico === null ? `<button class="${hojeAcao ? 'btn2' : 'btn'}" onclick="escolherAcao(${i});scrollTo(0,0)">${hojeAcao ? '✓ É a sua ação de hoje' : 'Fazer esta hoje'}</button>` : ''}</div>`;
+  const lido = (E.devLidos || {})[i], res = (E.resumos || {})[i];
   h += `<div class="resumo"><div class="r">✍️ Meu resumo<small id="rs${i}">${res && res.tx ? (NV.ref ? 'salvo na nuvem' : 'salvo neste aparelho') : ''}</small></div><textarea data-i="${i}" placeholder="Escreva com suas palavras o que você aprendeu e como vai usar isso na sua vida…">${esc((res && res.tx) || '')}</textarea></div>`;
   return h + `<div style="text-align:center;margin:14px 0 6px"><button class="${lido ? 'btn2' : 'btn'}" onclick="marcarDev(${i})">${lido ? '✓ Lido' : 'Marcar como lido'}</button> <button class="btn2" onclick="abrirImagem(${i})">📸 Imagem p/ Instagram</button></div>`;
 }
@@ -675,7 +675,7 @@ async function telaHoje() {
   let h = `<div class="dev-nome">Devocional de <b>${esc(nomeUsuario())}</b></div><div class="nuvem">${nuvemHtml(true)}</div>
     <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>
     <div class="paginas">${temas.map((t, x) => `<button class="${x === devPag ? 'on' : ''}${lidos[t] ? ' lido' : ''}" onclick="devPag=${x};telaHoje();scrollTo(0,0)">${lidos[t] ? '✓' : x + 1}</button>`).join('')}</div>
-    ${devOff === 0 ? cartaoAcao(dev, temas) : ''}`;
+    ${devOff === 0 ? cartaoAcao(dev) : ''}`;
   h += blocoTema(dev[i], i, txt, `${devPag + 1}º devocional de ${k}`);
   h += devPag < k - 1 ? `<div style="text-align:center;margin:6px 0 4px"><button class="btn" onclick="devPag++;telaHoje();scrollTo(0,0)">Próximo devocional (${devPag + 2} de ${k}) ›</button></div>` : '';
   h += `<div class="nav-cap"><button onclick="devOff--;devPag=null;telaHoje();scrollTo(0,0)">‹ Dia anterior</button>${devOff ? `<button onclick="devOff=0;devPag=null;telaHoje();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="devOff++;devPag=null;telaHoje();scrollTo(0,0)">Próximo dia ›</button></div>
@@ -1058,7 +1058,7 @@ function telaSobre() {
   <p>No Antigo Testamento hebraico, o nome de Deus aparece cerca de 7 mil vezes escrito com quatro letras: <b>YHWH</b>. A pronúncia exata se perdeu, porque por respeito os judeus deixaram de pronunciá-lo em voz alta e liam “Adonai” (Senhor). Por isso a maioria das Bíblias escreve <b>SENHOR</b> em letras maiúsculas — isso indica que ali, no original, está o nome. Outras traduções escrevem “Javé”, “Iavé” ou “Jeová”. São escolhas de tradução; o texto original é o mesmo. Quando quiser ver exatamente o que está escrito, use o botão <b>🔤 Original</b>.</p>
 
   <h2>Como funciona o app</h2>
-  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Para <b>grifar só algumas palavras</b>, segure o dedo sobre a palavra, arraste para escolher o trecho e toque numa cor na barra que aparece embaixo (✕ apaga o grifo).<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, 5 devocionais por dia, um em cada página (toque nos números 1 a 5; o ✓ mostra os que você já marcou como lidos). São 364 temas, mais de 2 meses sem repetir, e depois recomeça, só com textos da Bíblia, sem comentários de ninguém. Cada devocional traz uma <b>🎯 sugestão de ação</b> (é sugestão, não texto bíblico). Escolha uma para fazer ao longo do dia; ela fica no topo, dá para criar lembretes no Google Agenda e, à noite, marcar se você fez. Embaixo de cada tema há o espaço <b>✍️ Meu resumo</b> para você escrever com suas palavras; ele salva sozinho. O número no fim de cada texto abre o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
+  <p>• Funciona <b>sem internet</b> depois de aberto a primeira vez.<br>• Deslize o dedo para o lado para mudar de capítulo.<br>• Toque num versículo para destacar, favoritar, anotar, copiar ou enviar.<br>• Para <b>grifar só algumas palavras</b>, segure o dedo sobre a palavra, arraste para escolher o trecho e toque numa cor na barra que aparece embaixo (✕ apaga o grifo).<br>• Na busca, digite uma palavra (“misericórdia”) ou vá direto a um texto (“Jo 3:16”, “salmos 23”).<br>• Em <b>Hoje</b>, 5 devocionais por dia, um em cada página (toque nos números 1 a 5; o ✓ mostra os que você já marcou como lidos). São 364 temas, mais de 2 meses sem repetir, e depois recomeça, só com textos da Bíblia, sem comentários de ninguém. No topo, em <b>🎯 Minha ação de hoje</b>, você escreve uma coisa que vai praticar no dia; dá para criar lembretes no Google Agenda e, à noite, marcar se você fez. Embaixo de cada tema há o espaço <b>✍️ Meu resumo</b> para você escrever com suas palavras; ele salva sozinho. O número no fim de cada texto abre o capítulo inteiro.<br>• Suas notas ficam só neste celular — ninguém mais vê.</p>
   <p><small>Feito para Marcus do Vale.</small></p>
   </div>`;
 }
