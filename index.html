@@ -170,6 +170,8 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
 .ir-cap{display:inline-block;font-family:var(--ui);font-size:12px;font-weight:600;color:var(--pri);background:var(--bg2);border-radius:999px;padding:3px 10px;margin-left:4px;vertical-align:2px;white-space:nowrap}
 .temas button{display:flex;justify-content:space-between;width:100%;text-align:left;padding:12px 4px;border-bottom:1px solid var(--linha);font-size:15px}
 .temas button small{color:var(--tx2)}
+.ora-tit{font-family:var(--serif);font-size:21px;font-weight:600;text-align:center;margin:0 0 12px;line-height:1.3}
+.ora-ex{font-family:var(--serif);font-style:italic;text-align:center;color:var(--tx2);font-size:16px;line-height:1.55;margin:0 8px 8px}.ora-ex .add{font-style:normal}.ora-ex div{font-family:var(--ui);font-style:normal;font-size:12px;font-weight:600;color:var(--pri);margin-top:4px}
 </style>
 </head>
 <body>
@@ -194,10 +196,12 @@ main{max-width:720px;margin:0 auto;padding:0 16px}
   <section class="tela" id="t-meus"></section>
   <section class="tela" id="t-sobre"></section>
   <section class="tela" id="t-hoje"></section>
+  <section class="tela" id="t-orar"></section>
 </main>
 
 <nav class="barra" id="barra">
   <button data-t="hoje"><span>🌅</span>Hoje</button>
+  <button data-t="orar"><span>🙏</span>Orar</button>
   <button data-t="ler" class="on"><span>📖</span>Ler</button>
   <button data-t="livros"><span>📚</span>Livros</button>
   <button data-t="busca"><span>🔍</span>Buscar</button>
@@ -295,6 +299,7 @@ function irPara(t) {
   if (t === 'meus') telaMeus();
   if (t === 'sobre') telaSobre();
   if (t === 'hoje') telaHoje();
+  if (t === 'orar') telaOrar();
   if (t === 'busca') { marcarSeg('#buscaTrad', E.buscaTrad); setTimeout(() => $('#q').focus(), 50); }
   scrollTo(0, 0);
 }
@@ -406,7 +411,7 @@ async function abrirFolha(liv, cap, ver) {
 function fecharFolha() { $('#fundo').classList.remove('on'); $('#folha').classList.remove('on'); document.querySelectorAll('.v.sel').forEach(x => x.classList.remove('sel')); }
 function marca(criar) { const k = selV.liv + '.' + selV.cap + '.' + selV.ver; if (!E.marcas[k] && criar) E.marcas[k] = {}; return [k, E.marcas[k]]; }
 function limparMarca(k) { const m = E.marcas[k]; if (m && !m.cor && !m.fav && !m.nota) delete E.marcas[k]; }
-function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); nuvem('marcas', k); if (telaAtual === 'hoje') { const y = scrollY; telaHoje().then(() => scrollTo(0, y)); } else if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
+function depoisMarca(k) { if (E.marcas[k]) E.marcas[k].em = Date.now(); limparMarca(k); salvar(); nuvem('marcas', k); if (telaAtual === 'hoje' || telaAtual === 'orar') { const y = scrollY; (telaAtual === 'hoje' ? telaHoje() : telaOrar()).then(() => scrollTo(0, y)); } else if (selV.liv === E.livro && selV.cap === E.cap) ler({manterScroll: true}); }
 function pintar(c) { const [k, m] = marca(true); m.cor = c; depoisMarca(k); fecharFolha(); }
 function favoritar() { const [k, m] = marca(true); m.fav = !m.fav; depoisMarca(k); toast(m.fav ? 'Guardado nos favoritos' : 'Tirado dos favoritos'); fecharFolha(); }
 function editarNota() {
@@ -470,7 +475,7 @@ function grifar(cor) {
 }
 function redesenhar() {
   const y = scrollY, volta = () => scrollTo(0, y);
-  if (telaAtual === 'hoje') telaHoje().then(volta); else if (telaAtual === 'meus') telaMeus().then(volta); else if (telaAtual === 'ler') ler({manterScroll: true});
+  if (telaAtual === 'hoje') telaHoje().then(volta); else if (telaAtual === 'orar') telaOrar().then(volta); else if (telaAtual === 'meus') telaMeus().then(volta); else if (telaAtual === 'ler') ler({manterScroll: true});
 }
 
 // ---------- livros ----------
@@ -675,7 +680,7 @@ async function telaHoje() {
   let h = `<div class="dev-nome">Devocional de <b>${esc(nomeUsuario())}</b></div><div class="nuvem">${nuvemHtml(true)}</div>
     <div class="dev-data">${devOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>
     <div class="paginas">${temas.map((t, x) => `<button class="${x === devPag ? 'on' : ''}${lidos[t] ? ' lido' : ''}" onclick="devPag=${x};telaHoje();scrollTo(0,0)">${lidos[t] ? '✓' : x + 1}</button>`).join('')}</div>
-    ${devOff === 0 ? cartaoAcao(dev) : ''}`;
+    ${devOff === 0 ? cartaoOracao() + cartaoAcao(dev) : ''}`;
   h += blocoTema(dev[i], i, txt, `${devPag + 1}º devocional de ${k}`);
   h += devPag < k - 1 ? `<div style="text-align:center;margin:6px 0 4px"><button class="btn" onclick="devPag++;telaHoje();scrollTo(0,0)">Próximo devocional (${devPag + 2} de ${k}) ›</button></div>` : '';
   h += `<div class="nav-cap"><button onclick="devOff--;devPag=null;telaHoje();scrollTo(0,0)">‹ Dia anterior</button>${devOff ? `<button onclick="devOff=0;devPag=null;telaHoje();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="devOff++;devPag=null;telaHoje();scrollTo(0,0)">Próximo dia ›</button></div>
@@ -701,6 +706,145 @@ const resumoPend = {};
 addEventListener('visibilitychange', () => { if (document.hidden) for (const i of Object.keys(resumoPend)) { clearTimeout(resumoPend[i]); delete resumoPend[i]; nuvem('resumos', i); } });
 function crescer(ta) { ta.style.height = 'auto'; ta.style.height = ta.scrollHeight + 2 + 'px'; }
 function marcarDev(i) { E.devLidos = E.devLidos || {}; if (E.devLidos[i]) delete E.devLidos[i]; else E.devLidos[i] = Date.now(); salvar(); nuvem('devLidos', i); const y = scrollY; telaHoje().then(() => scrollTo(0, y)); }
+
+// ---------- orações da manhã (ao acordar) e da noite (ao deitar): só orações que estão na Bíblia ----------
+// Cada sessão: Salmo de abertura (muda todo dia) + oração de Jesus + oração de um servo fiel (as duas mudam todo dia) + fechamento fixo.
+// E.oracoes["2026-11-16"] = {manha: Date, noite: Date, mtx: 'minha oração', ntx: '...', em}
+const ORA = {
+  jesus: [
+    {t: 'A oração sacerdotal: “Pai, chegada é a hora”', refs: ['JOH 17:1-5']},
+    {t: 'Jesus ora pelos seus discípulos', refs: ['JOH 17:11-19']},
+    {t: 'Jesus ora por todos os que iriam crer', refs: ['JOH 17:20-26']},
+    {t: 'No Getsêmani: “Seja feita a tua vontade”', refs: ['MAT 26:39,42', 'LUK 22:44', 'HEB 5:7']},
+    {t: '“Aba, Pai, todas as coisas te são possíveis”', refs: ['MAR 14:35-36']},
+    {t: '“Graças te dou, Pai”', refs: ['MAT 11:25-26']},
+    {t: 'Diante do túmulo de Lázaro: “Sempre me ouves”', refs: ['JOH 11:41-42']},
+    {t: '“Pai, glorifica o teu nome”', refs: ['JOH 12:27-28']},
+    {t: 'Na cruz: “Pai, perdoa-lhes”', refs: ['LUK 23:34']},
+    {t: 'Na cruz: o clamor de Jesus', refs: ['MAT 27:46', 'PSA 22:1-5']},
+    {t: '“Eu roguei por ti, para que a tua fé não desfaleça”', refs: ['LUK 22:31-32']},
+    {t: 'A oração que Jesus aprovou: o publicano', refs: ['LUK 18:13-14']},
+  ],
+  servos: [
+    {t: 'Davi arrependido', refs: ['PSA 51:1-12']},
+    {t: 'Ana, com amargura de alma', refs: ['1SA 1:10-11']},
+    {t: 'Salomão pede sabedoria', refs: ['1KI 3:7-9']},
+    {t: 'Elias no monte Carmelo', refs: ['1KI 18:36-37']},
+    {t: 'Ezequias diante da ameaça', refs: ['2KI 19:15-19']},
+    {t: 'Ezequias doente, chorando', refs: ['2KI 20:2-3']},
+    {t: 'Jabez', refs: ['1CH 4:10']},
+    {t: 'Davi louva diante do povo', refs: ['1CH 29:10-13']},
+    {t: 'Asa: “Ajuda-nos, ó SENHOR”', refs: ['2CH 14:11']},
+    {t: 'Josafá: “Os nossos olhos estão em ti”', refs: ['2CH 20:6,12']},
+    {t: 'Neemias, dia e noite', refs: ['NEH 1:5-6,11']},
+    {t: 'Daniel, em jejum', refs: ['DAN 9:3-5,17-19']},
+    {t: 'Moisés: “Mostra-me a tua glória”', refs: ['EXO 33:13-15,18']},
+    {t: 'Jacó com medo de Esaú', refs: ['GEN 32:9-12']},
+    {t: 'Jonas no ventre do peixe', refs: ['JON 2:1-2,7-9']},
+    {t: 'Habacuque: “Ainda que a figueira não floresça”', refs: ['HAB 3:2,17-19']},
+    {t: 'A igreja ameaçada pede ousadia', refs: ['ACT 4:24,29-31']},
+    {t: 'Estêvão, ao morrer', refs: ['ACT 7:59-60']},
+    {t: 'Paulo: “Me ponho de joelhos diante do Pai”', refs: ['EPH 3:14-21']},
+    {t: 'Paulo pede sabedoria e luz', refs: ['EPH 1:16-19']},
+    {t: 'Paulo: que o amor cresça', refs: ['PHI 1:9-11']},
+    {t: 'Paulo: cheios do conhecimento da sua vontade', refs: ['COL 1:9-12']},
+    {t: 'Davi aflito e necessitado', refs: ['PSA 86:1-7']},
+    {t: 'Jeremias: “Nada é difícil para ti”', refs: ['JER 32:17']},
+  ],
+  manha: [
+    {t: '“Pela manhã ouvirás a minha voz”', refs: ['PSA 5:1-3']},
+    {t: '“Eu te busco ao amanhecer”', refs: ['PSA 63:1-8']},
+    {t: '“De madrugada faze-me ouvir a tua bondade”', refs: ['PSA 143:8-10']},
+    {t: '“Novas a cada manhã”', refs: ['LAM 3:22-26']},
+    {t: '“Farta-nos de manhã com a tua bondade”', refs: ['PSA 90:12-17']},
+    {t: '“Despertarei a alvorada”', refs: ['PSA 57:7-11']},
+    {t: '“Acordei, porque o SENHOR me sustentava”', refs: ['PSA 3:3-6']},
+    {t: '“Antecipei-me ao amanhecer”', refs: ['PSA 119:145-148']},
+    {t: '“A ti, SENHOR, levanto a minha alma”', refs: ['PSA 25:1-7']},
+    {t: '“Pela manhã cantarei a tua bondade”', refs: ['PSA 59:16-17']},
+  ],
+  noite: [
+    {t: '“Em paz me deito e logo durmo”', refs: ['PSA 4:1,6-8']},
+    {t: '“Examina-me, ó Deus”', refs: ['PSA 139:1-12,23-24']},
+    {t: '“Aquele que te guarda não dormita”', refs: ['PSA 121:1-8']},
+    {t: '“Até de noite o meu coração me ensina”', refs: ['PSA 16:7-11']},
+    {t: '“Quando me lembro de ti no meu leito”', refs: ['PSA 63:6-8']},
+    {t: '“Bendizei ao SENHOR durante as noites”', refs: ['PSA 134:1-3']},
+    {t: '“A minha oração, como incenso”', refs: ['PSA 141:1-4']},
+    {t: '“De noite a sua canção está comigo”', refs: ['PSA 42:8,11']},
+    {t: '“Purifica-me das faltas ocultas”', refs: ['PSA 19:12-14']},
+    {t: '“À sombra do Altíssimo”', refs: ['PSA 91:1-6']},
+    {t: '“O SENHOR é o meu pastor”', refs: ['PSA 23:1-6']},
+  ],
+  fim: {
+    manha: {t: 'Como Jesus ensinou: o Pai Nosso', refs: ['MAT 6:9-13']},
+    noite: {t: '“Em tuas mãos entrego o meu espírito”', refs: ['PSA 31:1-5', 'LUK 23:46', 'NUM 6:24-26']},
+  },
+  exemplo: {manha: 'MAR 1:35', noite: 'LUK 6:12'},
+};
+let oraSessao = null, oraOff = 0; // null = escolhe pela hora; oraOff = dias antes/depois
+const sessaoAgora = () => { const h = new Date().getHours(); return h >= 4 && h < 15 ? 'manha' : 'noite'; };
+function diaOracao() { const d = hojeZero(); if (new Date().getHours() < 4) d.setDate(d.getDate() - 1); d.setDate(d.getDate() + oraOff); return d; } // de madrugada ainda é a noite de ontem
+function oracoesDoDia(dia, s) {
+  const n = Math.round((dia - INICIO_DEV) / 864e5), pega = (l, i) => l[((i % l.length) + l.length) % l.length], m = s === 'manha' ? 0 : 1;
+  return [
+    ['Salmo da ' + (s === 'manha' ? 'manhã' : 'noite'), pega(ORA[s], n)],
+    ['Oração de Jesus', pega(ORA.jesus, 2 * n + m)],
+    ['Oração de um servo fiel', pega(ORA.servos, 2 * n + m)],
+    [s === 'manha' ? 'Para terminar' : 'Antes de dormir', ORA.fim[s]],
+  ];
+}
+function gravarOracao(dia, mudar) { const k = chaveDia(dia); E.oracoes = E.oracoes || {}; const d = Object.assign({}, E.oracoes[k] || {}); mudar(d); d.em = Date.now(); E.oracoes[k] = d; salvar(); nuvem('oracoes', k); }
+function blocoOracao(rotulo, o, txt) {
+  let h = `<div class="grupo-tit" style="text-align:center;margin-top:24px">${rotulo}</div><div class="ora-tit">${esc(o.t)}</div>`;
+  for (const ref of o.refs) {
+    const {liv, cap, vs} = partesRef(ref), caps = (txt[liv] || [])[cap - 1] || [];
+    h += `<div class="dev-p"><div class="r">${esc(nomeRef(ref))}</div><div class="t">` +
+      vs.map(v => { if (!caps[v - 1]) return ''; const m = E.marcas[liv + '.' + cap + '.' + v] || {};
+        return `<span class="v dv ${m.cor || ''}" data-l="${liv}" data-c="${cap}" data-v="${v}">${vs.length > 1 ? `<sup>${v}</sup>` : ''}${fmtG(caps[v - 1], E.trad, liv + '.' + cap + '.' + v)}${m.nota ? '<span class="nota-ic">📝</span>' : ''}${m.fav ? '<span class="nota-ic">⭐</span>' : ''}</span>`; }).join(' ') +
+      ` <button class="ir-cap" onclick="abrir('${liv}',${cap},${vs[0]})" title="Ler o capítulo inteiro">${LIV[liv].abr} ${cap}:${vs[0]} ›</button></div></div>`;
+  }
+  return h;
+}
+async function telaOrar() {
+  const el = $('#t-orar');
+  let txt; try { txt = await carregar(E.trad); } catch (e) { el.innerHTML = '<div class="aviso">Não consegui abrir o texto. <button class="btn" onclick="telaOrar()">Tentar de novo</button></div>'; return; }
+  const s = oraSessao || sessaoAgora(), dia = diaOracao(), reg = (E.oracoes || {})[chaveDia(dia)] || {};
+  const feito = reg[s], campo = s === 'manha' ? 'mtx' : 'ntx';
+  const ex = partesRef(ORA.exemplo[s]), exTx = ((txt[ex.liv] || [])[ex.cap - 1] || [])[ex.vs[0] - 1] || '';
+  let h = `<div class="seg" style="display:flex;margin:16px auto 0;width:max-content">${[['manha', '🌅 Ao acordar'], ['noite', '🌙 Ao deitar']].map(([v, n]) => `<button class="${v === s ? 'on' : ''}" onclick="oraSessao='${v}';telaOrar()">${n}</button>`).join('')}</div>
+    <div class="dev-data">${oraOff === 0 ? 'Hoje, ' : ''}${dia.toLocaleDateString('pt-BR', {weekday: 'long', day: 'numeric', month: 'long'})}</div>
+    <div class="dev-tema">${s === 'manha' ? 'Oração da manhã' : 'Oração da noite'}</div>
+    <div class="ora-ex">${fmt(exTx)}<div>${esc(nomeRef(ORA.exemplo[s]))}</div></div>`;
+  for (const [rot, o] of oracoesDoDia(dia, s)) h += blocoOracao(rot, o, txt);
+  h += `<div class="resumo"><div class="r">🙏 Minha oração<small id="oraSalvo">${reg[campo] ? 'salva' : ''}</small></div><textarea id="oraMinha" data-c="${campo}" placeholder="Agora fale com Deus com as suas palavras…">${esc(reg[campo] || '')}</textarea></div>
+    <div style="text-align:center;margin:14px 0 6px"><button class="${feito ? 'btn2' : 'btn'}" onclick="marcarOrei('${s}')">${feito ? '✓ Orei' : 'Amém — marcar como feita'}</button></div>
+    <div class="nav-cap"><button onclick="oraOff--;telaOrar();scrollTo(0,0)">‹ Dia anterior</button>${oraOff ? `<button onclick="oraOff=0;telaOrar();scrollTo(0,0)">Hoje</button>` : ''}<button onclick="oraOff++;telaOrar();scrollTo(0,0)">Próximo dia ›</button></div>
+    <div class="info" style="text-align:center;margin-bottom:24px">${TRAD[E.trad].nome}</div>`;
+  el.innerHTML = h;
+  const ta = $('#oraMinha'); if (ta) crescer(ta);
+}
+function marcarOrei(s) {
+  let agora; gravarOracao(diaOracao(), d => { if (d[s]) delete d[s]; else d[s] = Date.now(); agora = !!d[s]; });
+  if (agora) toast('Amém 🙏');
+  const y = scrollY; telaOrar().then(() => scrollTo(0, y));
+}
+$('#t-orar').addEventListener('click', e => {
+  const v = e.target.closest('.dv'); if (!v || window.getSelection().toString()) return;
+  abrirFolha(v.dataset.l, +v.dataset.c, +v.dataset.v);
+  v.classList.add('sel');
+});
+$('#t-orar').addEventListener('input', e => {
+  if (e.target.id !== 'oraMinha') return;
+  const ta = e.target, tx = ta.value, c = ta.dataset.c, dia = diaOracao(); crescer(ta); clearTimeout(telaOrar.t);
+  telaOrar.t = setTimeout(() => { gravarOracao(dia, d => { if (tx.trim()) d[c] = tx; else delete d[c]; }); const s = $('#oraSalvo'); if (s) s.textContent = tx.trim() ? 'salva' : ''; }, 700);
+});
+// botão no Hoje: leva à oração da manhã ou da noite (conforme a hora)
+function cartaoOracao() {
+  const s = sessaoAgora(), d = hojeZero(); if (new Date().getHours() < 4) d.setDate(d.getDate() - 1);
+  const feito = ((E.oracoes || {})[chaveDia(d)] || {})[s];
+  return `<div style="text-align:center;margin:12px 0 0"><button class="${feito ? 'btn2' : 'btn'}" onclick="oraSessao=null;oraOff=0;irPara('orar')">${s === 'manha' ? '🌅 Oração da manhã' : '🌙 Oração da noite'}${feito ? ' ✓' : ''}</button></div>`;
+}
 
 // ---------- imagem do devocional para Instagram / TikTok ----------
 const nomeUsuario = () => E.nome || 'Marcus do Vale';
@@ -944,7 +1088,7 @@ function baixar(f) { const a = document.createElement('a'); a.href = URL.createO
 // ---------- nuvem: estudos iguais no PC e no celular ----------
 // Usa o Firebase do Marcus (mesmo projeto do Rota Tambasa; as regras só liberam a conta Google dele).
 // Cada destaque/grifo/resumo é gravado como um campo separado (set com merge): um aparelho nunca apaga o que o outro fez.
-const CAMPOS = ['marcas', 'grifos', 'resumos', 'devLidos', 'exerc'];
+const CAMPOS = ['marcas', 'grifos', 'resumos', 'devLidos', 'exerc', 'oracoes'];
 const NV = {ref: null, user: null, pronto: false};
 const paraNuvem = (c, v) => c === 'grifos' ? v.map(([a, b, cor]) => ({a, b, c: cor})) : v; // o Firestore não aceita lista dentro de lista
 const daNuvem = (c, v) => c === 'grifos' ? v.map(o => [o.a, o.b, o.c]) : v;

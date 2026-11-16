@@ -1,5 +1,5 @@
-// Bíblia Sagrada — funciona offline. Versão 3c460dc1c0
-const CACHE = 'biblia-3c460dc1c0';
+// Bíblia Sagrada — funciona offline. Versão c430e7888f
+const CACHE = 'biblia-c430e7888f';
 const BASICO = ['./', 'index.html', 'manifest.webmanifest', 'dados/blivre.json', 'dados/bpm.json', 'dados/devocional.json', 'firebase-config.js', 'icons/icon-192.png', 'icons/icon-512.png'];
 // install: {cache: 'reload'} = sempre baixa o arquivo novo, nunca o velho guardado pelo navegador
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(BASICO.map(u => new Request(u, {cache: 'reload'})))).then(() => self.skipWaiting())); });
